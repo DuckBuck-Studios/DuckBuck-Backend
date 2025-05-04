@@ -1,0 +1,224 @@
+const path = require('path'); 
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const xss = require('xss-clean');
+const mongoSanitize = require('express-mongo-sanitize');
+const hpp = require('hpp');
+const compression = require('compression');
+const mongoose = require('mongoose');
+const connectDB = require('./config/database');
+const logger = require('./utils/logger');
+const httpsRedirect = require('./middlewares/https-redirect');
+
+// Initialize Express app
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+// Connect to MongoDB
+connectDB();
+
+// Trust proxies if behind a load balancer (like Heroku, AWS ELB, Nginx)
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
+// Apply HTTPS redirect in production
+app.use(httpsRedirect);
+
+// Request timeout for all requests
+app.use((req, res, next) => {
+  const timeoutMs = parseInt(process.env.REQUEST_TIMEOUT_MS || 30000);
+  res.setTimeout(timeoutMs, () => {
+    logger.warn(`Global request timeout after ${timeoutMs}ms for ${req.originalUrl}`);
+    if (!res.headersSent) {
+      res.status(408).json({
+        success: false,
+        message: 'Request timeout'
+      });
+    }
+  });
+  next();
+});
+
+// Security middleware - order matters
+// Fixed CSP directives handling to use the string directly instead of parsing as JSON
+app.use(helmet({
+  contentSecurityPolicy: process.env.CSP_DIRECTIVES ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      connectSrc: ["'self'"]
+    }
+  } : undefined
+})); // Set security headers
+app.use(xss()); // Prevent XSS attacks
+app.use(mongoSanitize()); // Prevent MongoDB injection
+app.use(hpp()); // Prevent HTTP Parameter Pollution
+
+// Standard middleware
+app.use(express.json({ limit: '10kb' })); // Body parser with payload size limit
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(compression()); // Compress responses
+
+// Setup CORS for Flutter applications
+app.use(cors({
+  origin: '*', // Allow all origins for Flutter app requests
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  credentials: true,
+  maxAge: 86400 // Cache preflight requests for 24 hours
+}));
+
+// Logging middleware (development vs production)
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined', { stream: { write: message => logger.http(message.trim()) } }));
+}
+
+// Global rate limiting
+const limiter = rateLimit({
+  windowMs: process.env.API_RATE_WINDOW_MS || 15 * 60 * 1000,
+  max: process.env.API_RATE_LIMIT || 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.'
+  },
+  skip: (req) => process.env.NODE_ENV !== 'production'
+});
+
+// Apply rate limiting to all requests
+app.use(limiter);
+
+// Specific rate limiter for health checks to prevent abuse
+const healthCheckLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minute window
+  max: 30, // limit each IP to 30 health check requests per 5 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many health check requests, please try again later.'
+  }
+});
+
+// Root route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'DuckBuck'
+  });
+});
+
+// Routes
+app.use('/api/waitlist', require('./routes/waitlist.routes'));
+app.use('/api/contact', require('./routes/message.routes'));
+
+// Health check endpoint with rate limiting
+app.get('/health', healthCheckLimiter, (req, res) => {
+  // Check database connection
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date(),
+    environment: process.env.NODE_ENV,
+    uptime: process.uptime(),
+    database: {
+      status: dbStatus
+    },
+    memory: {
+      usage: process.memoryUsage().rss / (1024 * 1024), // Memory usage in MB
+      heapUsed: process.memoryUsage().heapUsed / (1024 * 1024),
+      heapTotal: process.memoryUsage().heapTotal / (1024 * 1024)
+    },
+    version: process.env.npm_package_version || require('../package.json').version
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  logger.error(`${err.name}: ${err.message}`, { stack: err.stack });
+  
+  // Handle specific error types
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation Error',
+      errors: process.env.NODE_ENV === 'production' ? 'Invalid input' : err.errors
+    });
+  }
+  
+  // Handle MongoDB errors
+  if (err.code === 11000) { // Duplicate key error
+    const field = Object.keys(err.keyValue)[0];
+    return res.status(409).json({
+      success: false,
+      message: process.env.NODE_ENV === 'production' ? 'Resource already exists' : `${field} already exists`
+    });
+  }
+
+  // Default error response
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Resource not found'
+  });
+});
+
+// Start server with error handling
+const server = app.listen(PORT, () => {
+  logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+});
+
+// Set server timeouts
+server.headersTimeout = 60000; // 60 seconds
+server.keepAliveTimeout = 30000; // 30 seconds
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received. Shutting down gracefully...');
+  server.close(() => {
+    logger.info('Server closed.');
+    process.exit(0);
+  });
+  
+  // Force close server after 10 seconds
+  setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 10000);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  logger.error('Unhandled Promise Rejection:', err);
+  // Give the server a chance to finish current requests before shutting down
+  server.close(() => process.exit(1));
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception:', err);
+  server.close(() => process.exit(1));
+});
+
+module.exports = app;
