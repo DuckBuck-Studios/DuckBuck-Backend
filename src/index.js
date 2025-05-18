@@ -22,9 +22,16 @@ const PORT = process.env.PORT || 8080;
 // Connect to MongoDB
 connectDB();
 
-// Trust proxies if behind a load balancer (like Heroku, AWS ELB, Nginx)
-if (process.env.TRUST_PROXY === 'true') {
-  app.set('trust proxy', 1);
+// Trust proxies if behind a load balancer or on Google Cloud Run
+if (process.env.TRUST_PROXY === 'true' || 
+    process.env.K_SERVICE || // Google Cloud Run environment variable
+    process.env.GOOGLE_CLOUD_PROJECT) {
+  // Trust first proxy, or multiple proxies if specified
+  const proxyCount = parseInt(process.env.PROXY_COUNT || '1');
+  
+  // Cloud Run requires trusting at least one proxy
+  logger.info(`Setting trust proxy to: ${proxyCount}`);
+  app.set('trust proxy', proxyCount);
 }
 
 // Apply HTTPS redirect in production

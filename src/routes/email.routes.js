@@ -64,4 +64,54 @@ router.post('/send-login-notification',
   emailController.sendLoginNotificationHandler
 );
 
+/**
+ * @route GET /api/email/ip-debug
+ * @desc Get diagnostic information about IP detection (only available in development or with DEBUG_IP flag)
+ * @access Private (requires API key)
+ */
+router.get('/ip-debug', 
+  apiKeyAuth,
+  (req, res) => {
+    // Only available in development or if DEBUG_IP is enabled
+    if (process.env.NODE_ENV !== 'development' && process.env.DEBUG_IP !== 'true') {
+      return res.status(404).json({
+        success: false,
+        message: 'Not found'
+      });
+    }
+    
+    const { getClientIp } = require('../utils/ip-helper');
+    const geoip = require('geoip-lite');
+    
+    const clientIp = getClientIp(req);
+    const detectedIp = clientIp === '::1' || clientIp === '127.0.0.1' ? '8.8.8.8' : clientIp;
+    const geo = geoip.lookup(detectedIp);
+    
+    res.json({
+      success: true,
+      data: {
+        headers: {
+          'x-forwarded-for': req.headers['x-forwarded-for'] || null,
+          'x-real-ip': req.headers['x-real-ip'] || null,
+          'cf-connecting-ip': req.headers['cf-connecting-ip'] || null,
+          'x-cloud-trace-context': req.headers['x-cloud-trace-context'] || null,
+          'x-google-cloud-trace': req.headers['x-google-cloud-trace'] || null
+        },
+        requestIp: req.ip,
+        detectedClientIp: clientIp,
+        inGoogleEnvironment: Boolean(req.headers['x-cloud-trace-context'] || 
+                                    req.headers['x-google-cloud-trace'] || 
+                                    process.env.GOOGLE_CLOUD_PROJECT),
+        geoLocation: geo ? {
+          country: geo.country,
+          region: geo.region,
+          city: geo.city,
+          timezone: geo.timezone,
+          ll: geo.ll
+        } : 'Unknown'
+      }
+    });
+  }
+);
+
 module.exports = router;

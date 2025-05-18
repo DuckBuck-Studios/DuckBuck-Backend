@@ -3,6 +3,7 @@ const geoip = require('geoip-lite');
 const logger = require('../utils/logger');
 const fs = require('fs');
 const path = require('path');
+const { getClientIp } = require('../utils/ip-helper');
 
 // Setup for email configuration
 // All email configuration should come from environment variables
@@ -152,9 +153,14 @@ exports.sendWelcomeEmail = async (req, email, username) => {
       return;
     }
 
-    const ipAddress = req.ip || 'Unknown IP';
-    const geo = geoip.lookup(ipAddress === '::1' || ipAddress === '127.0.0.1' ? '8.8.8.8' : ipAddress); // Use a public IP for local testing
-    const location = geo ? `${geo.city}, ${geo.region}, ${geo.country}` : 'Unknown Location';
+    const ipAddress = getClientIp(req);
+    // Don't use test IPs in production, but in development we can use a fallback
+    let lookupIp = ipAddress;
+    if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
+      lookupIp = process.env.NODE_ENV === 'production' ? ipAddress : '8.8.8.8';
+    }
+    const geo = geoip.lookup(lookupIp);
+    const location = geo ? `${geo.city || 'Unknown City'}, ${geo.region || 'Unknown Region'}, ${geo.country || 'Unknown Country'}` : 'Unknown Location';
 
     logger.info(`Attempting to send welcome email to: ${email} for user: ${username} (UID: ${req.user ? req.user.uid : 'N/A'}), IP: ${ipAddress}, Location: ${location}`);
 
@@ -212,9 +218,14 @@ exports.sendLoginNotification = async (req, email, username, loginTime) => {
     }
 
     const timeOfLogin = loginTime || new Date().toLocaleString();
-    const ipAddress = req.ip || 'Unknown IP';
-    const geo = geoip.lookup(ipAddress === '::1' || ipAddress === '127.0.0.1' ? '8.8.8.8' : ipAddress); // Use a public IP for local testing
-    const location = geo ? `${geo.city}, ${geo.region}, ${geo.country}` : 'Unknown Location';
+    const ipAddress = getClientIp(req);
+    // Don't use test IPs in production, but in development we can use a fallback
+    let lookupIp = ipAddress;
+    if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
+      lookupIp = process.env.NODE_ENV === 'production' ? ipAddress : '8.8.8.8';
+    }
+    const geo = geoip.lookup(lookupIp);
+    const location = geo ? `${geo.city || 'Unknown City'}, ${geo.region || 'Unknown Region'}, ${geo.country || 'Unknown Country'}` : 'Unknown Location';
 
     logger.info(`Attempting to send login notification to: ${email} for user: ${username} (UID: ${req.user ? req.user.uid : 'N/A'}) at ${timeOfLogin}, IP: ${ipAddress}, Location: ${location}`);
 
