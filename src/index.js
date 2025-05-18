@@ -53,17 +53,40 @@ app.use((req, res, next) => {
 });
 
 // Security middleware - order matters
-// Fixed CSP directives handling to use the string directly instead of parsing as JSON
+// Enhanced Helmet configuration with comprehensive security headers
 app.use(helmet({
-  contentSecurityPolicy: process.env.CSP_DIRECTIVES ? {
+  contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      imgSrc: ["'self'", "data:"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'"]
+      defaultSrc: ["'self'", "*"],
+      imgSrc: ["'self'", "data:", "*"],
+      styleSrc: ["'self'", "'unsafe-inline'", "*"],
+      scriptSrc: ["'self'", "*"],
+      connectSrc: ["'self'", "*"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "*"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'", "*"],
+      frameSrc: ["*"],
+      formAction: ["'self'", "*"],
+      upgradeInsecureRequests: []
     }
-  } : undefined
+  },
+  crossOriginEmbedderPolicy: { policy: "require-corp" },
+  crossOriginOpenerPolicy: { policy: "same-origin" },
+  crossOriginResourcePolicy: { policy: "same-origin" },
+  dnsPrefetchControl: { allow: false },
+  expectCt: { 
+    enforce: true,
+    maxAge: 30 * 24 * 60 * 60 // 30 days in seconds
+  },
+  frameguard: { action: "deny" },
+  hsts: {
+    maxAge: 31536000, // 1 year in seconds
+    includeSubDomains: true,
+    preload: true
+  },
+  permittedCrossDomainPolicies: { permittedPolicies: "none" },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  xssFilter: true
 })); // Set security headers
 app.use(xss()); // Prevent XSS attacks
 app.use(mongoSanitize()); // Prevent MongoDB injection
@@ -73,6 +96,10 @@ app.use(hpp()); // Prevent HTTP Parameter Pollution
 app.use(express.json({ limit: '10kb' })); // Body parser with payload size limit
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(compression()); // Compress responses
+
+// Apply input sanitization to all requests
+const sanitizeInput = require('./middlewares/sanitize-input');
+app.use(sanitizeInput);
 
 // Setup CORS for Flutter applications
 app.use(cors({
@@ -107,18 +134,6 @@ const limiter = rateLimit({
 // Apply rate limiting to all requests
 app.use(limiter);
 
-// Specific rate limiter for health checks to prevent abuse
-const healthCheckLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minute window
-  max: 30, // limit each IP to 30 health check requests per 5 minutes
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: 'Too many health check requests, please try again later.'
-  }
-});
-
 // Root route
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -130,28 +145,7 @@ app.get('/', (req, res) => {
 app.use('/api/waitlist', require('./routes/waitlist.routes'));
 app.use('/api/contact', require('./routes/message.routes'));
 app.use('/api/email', require('./routes/email.routes'));
-
-// Health check endpoint with rate limiting
-app.get('/health', healthCheckLimiter, (req, res) => {
-  // Check database connection
-  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-  
-  res.status(200).json({ 
-    status: 'ok', 
-    timestamp: new Date(),
-    environment: process.env.NODE_ENV,
-    uptime: process.uptime(),
-    database: {
-      status: dbStatus
-    },
-    memory: {
-      usage: process.memoryUsage().rss / (1024 * 1024), // Memory usage in MB
-      heapUsed: process.memoryUsage().heapUsed / (1024 * 1024),
-      heapTotal: process.memoryUsage().heapTotal / (1024 * 1024)
-    },
-    version: process.env.npm_package_version || require('../package.json').version
-  });
-});
+app.use('/api/health', require('./routes/health.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

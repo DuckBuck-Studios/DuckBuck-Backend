@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const { submitMessage } = require('../controllers/message.controller');
 const securityMiddleware = require('../middlewares/security.middleware');
 const apiKeyAuth = require('../middlewares/api-key-auth');
+const { validateSchema, schemas } = require('../middlewares/validate-schema');
 const logger = require('../utils/logger');
 
 // Request timeout middleware
@@ -45,7 +46,8 @@ router.post('/submit',
   requestTimeout,
   securityMiddleware, 
   messageLimiter,
-  apiKeyAuth, 
+  apiKeyAuth,
+  validateSchema(schemas.contactMessage), // Added schema validation
   submitMessage
 );
 

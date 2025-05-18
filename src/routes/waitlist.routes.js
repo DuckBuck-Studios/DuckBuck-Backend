@@ -5,6 +5,7 @@ const { addToWaitlist } = require('../controllers/waitlist.controller');
 const validateEmail = require('../middlewares/validate-email');
 const securityMiddleware = require('../middlewares/security.middleware');
 const apiKeyAuth = require('../middlewares/api-key-auth');
+const { validateSchema, schemas } = require('../middlewares/validate-schema');
 const logger = require('../utils/logger');
 
 // Request timeout middleware
@@ -48,6 +49,7 @@ router.post('/',
   waitlistRateLimiter,
   apiKeyAuth, 
   validateEmail, 
+  validateSchema(schemas.email), // Added schema validation
   addToWaitlist
 );
 

@@ -5,6 +5,7 @@ const emailController = require('../controllers/email.controller');
 const securityMiddleware = require('../middlewares/security.middleware');
 const apiKeyAuth = require('../middlewares/api-key-auth');
 const firebaseAuthMiddleware = require('../middlewares/firebase-auth.middleware');
+const { validateSchema, schemas } = require('../middlewares/validate-schema');
 const logger = require('../utils/logger');
 
 // Request timeout middleware
@@ -47,6 +48,7 @@ router.post('/send-welcome',
   emailLimiter,
   apiKeyAuth,
   firebaseAuthMiddleware,
+  validateSchema(schemas.welcomeEmail), // Added schema validation
   emailController.sendWelcomeEmailHandler
 );
 
@@ -61,6 +63,7 @@ router.post('/send-login-notification',
   emailLimiter,
   apiKeyAuth,
   firebaseAuthMiddleware,
+  validateSchema(schemas.loginNotificationEmail), // Added schema validation
   emailController.sendLoginNotificationHandler
 );
 
