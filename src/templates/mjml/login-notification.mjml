@@ -1,0 +1,132 @@
+<mjml>
+  <mj-head>
+    <!-- 1. Custom Font (Roboto from Google Fonts) -->
+    <mj-font name="Roboto" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" />
+    <mj-attributes>
+      <!-- Apply custom font, fallback to Arial -->
+      <mj-all font-family="Roboto, Arial, sans-serif" />
+      <mj-text font-size="16px" line-height="1.5" color="#E0E0E0" />
+      <mj-body background-color="#121212" />
+      <!-- 2. Subtle Background Pattern -->
+      <mj-section background-color="#1E1E1E" border-radius="8px" />
+      <mj-button background-color="#00FF00" color="#121212" font-size="16px" border-radius="5px" font-weight="bold" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .container {
+        background-color: #121212;
+      }
+      .header {
+        background-color: #1E1E1E;
+        padding-top: 20px;
+        padding-bottom: 20px;
+        border-radius: 8px 8px 0 0;
+      }
+      .content-wrapper {
+        background-color: #1E1E1E;
+        padding: 20px;
+        border: 1px solid #333333;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+      }
+      .alert-text {
+        color: #FF4848;
+        font-weight: bold;
+      }
+      .support-contact-text {
+        font-size: 14px;
+        color: #A0A0A0;
+        padding-top: 10px;
+      }
+      .support-contact-text a {
+        color: #00FF00;
+        text-decoration: underline;
+      }
+      .footer {
+        font-size: 12px;
+        color: #A0A0A0;
+        text-align: center;
+        padding-top: 20px;
+      }
+      .footer a {
+        color: #00FF00;
+        text-decoration: none;
+      }
+      .highlight-green {
+        color: #00FF00;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body mj-class="container">
+    <mj-section padding="10px">
+      <mj-column>
+        <mj-spacer height="15px" />
+      </mj-column>
+    </mj-section>
+    <mj-section mj-class="header">
+      <mj-column>
+        <!-- Logo with improved styling -->
+        <mj-image width="120px" src="https://duckbuck.app/app_logo.png" alt="DuckBuck Studios Logo" padding="10px" align="center" />
+        <mj-text color="#00FF00" font-size="18px" font-weight="bold" align="center">DuckBuck Studios</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section mj-class="content-wrapper">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="bold" color="#00FF00">Security Alert: New Login to DuckBuck</mj-text>
+        <mj-spacer height="20px" />
+        <mj-text color="#E0E0E0">
+          Hello {{username}},
+        </mj-text>
+        <mj-text color="#E0E0E0">
+          We detected a new login to your DuckBuck account, your secure communication hub. Here are the details:
+        </mj-text>
+        <mj-text padding="15px" background-color="#252525">
+          <table style="width: 100%; border-collapse: collapse; border-radius: 4px; overflow: hidden;">
+            <tr>
+              <td style="padding: 5px 10px;"><strong style="color: #00FF00;">Time:</strong></td>
+              <td style="padding: 5px 10px;">{{loginTime}}</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 10px;"><strong style="color: #00FF00;">Approximate Location:</strong></td>
+              <td style="padding: 5px 10px;">{{loginLocation}}</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 10px;"><strong style="color: #00FF00;">IP Address:</strong></td>
+              <td style="padding: 5px 10px;">{{loginIp}}</td>
+            </tr>
+          </table>
+        </mj-text>
+        <mj-spacer height="15px" />
+        <mj-text mj-class="alert-text">
+          If this was not you, please contact us immediately at <a href="mailto:contact@duckbuck.app" style="color:#00FF00; font-weight:bold;">contact@duckbuck.app</a>
+        </mj-text>
+        <mj-divider border-color="#333333" padding="15px 0" />
+        <mj-text color="#E0E0E0">
+          If this was you, you can safely ignore this email.
+        </mj-text>
+        <mj-spacer height="20px" />
+        <mj-text color="#E0E0E0">
+          Stay secure,<br />
+          DuckBuck Studios
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section padding-top="30px">
+      <mj-column>
+        <mj-divider border-color="#333333" padding="0 25px" />
+        <!-- 4. Social Media Links -->
+        <mj-social font-size="12px" icon-size="24px" mode="horizontal" padding="15px 0">
+          <mj-social-element name="linkedin" href="https://www.linkedin.com/company/duckbuck-studios" alt="DuckBuck Studios on LinkedIn">
+            LinkedIn
+          </mj-social-element>
+          <!-- Add other social media elements here -->
+        </mj-social>
+        <mj-text align="center" font-size="12px" color="#A0A0A0" line-height="1.4">
+          &copy; 2025 DuckBuck Studios. All rights reserved.<br />
+          Dhenkanal, Odisha, India<br />
+          <a href="https://duckbuck.app/privacy" style="color: #00FF00; text-decoration: none;">Privacy Policy</a> | <a href="https://duckbuck.app/terms" style="color: #00FF00; text-decoration: none;">Terms of Service</a><br />
+          This is an automated message. Please do not reply directly to this email.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

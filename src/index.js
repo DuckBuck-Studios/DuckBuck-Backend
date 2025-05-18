@@ -122,6 +122,7 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/api/waitlist', require('./routes/waitlist.routes'));
 app.use('/api/contact', require('./routes/message.routes'));
+app.use('/api/email', require('./routes/email.routes'));
 
 // Health check endpoint with rate limiting
 app.get('/health', healthCheckLimiter, (req, res) => {

@@ -1,0 +1,140 @@
+<mjml>
+  <mj-head>
+    <!-- Custom Font (Roboto from Google Fonts) -->
+    <mj-font name="Roboto" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" />
+    <mj-font name="Outfit" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" />
+    <mj-attributes>
+      <!-- Apply custom font, fallback to Arial -->
+      <mj-all font-family="Outfit, Roboto, Arial, sans-serif" />
+      <mj-text font-size="16px" line-height="1.6" color="#E0E0E0" />
+      <mj-body background-color="#121212" />
+      <mj-section background-color="#1E1E1E" border-radius="8px" />
+      <mj-button background-color="#00FF00" color="#121212" font-size="16px" border-radius="6px" font-weight="600" />
+      <mj-image alt="Feature icon" width="32px" padding-right="12px" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .container {
+        background-color: #121212;
+      }
+      .header {
+        background-color: #1E1E1E;
+        padding-top: 24px;
+        padding-bottom: 24px;
+        border-radius: 8px 8px 0 0;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      .content-wrapper {
+        background-color: #1E1E1E;
+        padding: 30px 25px;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+      }
+      .footer {
+        font-size: 13px;
+        color: #A0A0A0;
+        text-align: center;
+        padding-top: 25px;
+      }
+      .footer a {
+        color: #00FF00;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .highlight-green {
+        color: #00FF00;
+        font-weight: 600;
+      }
+      .feature-item table {
+        margin-bottom: 16px;
+        border-collapse: separate; 
+        border-spacing: 0 4px;
+      }
+      .feature-box {
+        background-color: #252525;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 16px;
+        border-left: 3px solid #00FF00;
+      }
+      .welcome-heading {
+        letter-spacing: 0.5px;
+      }
+      .username {
+        background: linear-gradient(90deg, #00FF00, #9eff9e);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body mj-class="container">
+    <mj-section padding="10px">
+      <mj-column>
+        <mj-spacer height="15px" />
+      </mj-column>
+    </mj-section>
+    <mj-section mj-class="header">
+      <mj-column>
+        <mj-image width="120px" src="https://duckbuck.app/app_logo.png" alt="DuckBuck Studios Logo" padding="10px" align="center" />
+        <mj-text color="#00FF00" font-size="18px" font-weight="bold" align="center">DuckBuck Studios</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section mj-class="content-wrapper">
+      <mj-column>
+        <mj-text font-size="28px" font-weight="bold" color="#00FF00" css-class="welcome-heading">
+          Welcome to DuckBuck, {{username}}!
+        </mj-text>
+        <mj-spacer height="25px" />
+        <mj-text color="#E0E0E0" font-size="17px">
+          We're excited to have you join the DuckBuck community! Get ready to experience a new era of communication that's both secure and intuitive.
+        </mj-text>
+        <mj-spacer height="25px" />
+        
+        <!-- Account security info -->
+        <mj-text background-color="#1a1a1a" padding="15px">
+          <div style="border-left: 3px solid #00FF00; padding-left: 15px; border-radius: 4px; overflow: hidden;">
+            <div style="font-size:16px; color:#FFFFFF; margin-bottom:10px;">
+              <strong style="color:#00FF00;">✓ Account Security</strong>
+            </div>
+            <div style="color:#E0E0E0;">
+              Your account was registered from IP address: <strong>{{ipAddress}}</strong><br/>
+              Approximate location: <strong>{{location}}</strong><br/><br/>
+              If this wasn't you, please contact us immediately at <a href="mailto:contact@duckbuck.app" style="color:#00FF00; font-weight:bold;">contact@duckbuck.app</a>
+            </div>
+          </div>
+        </mj-text>
+        
+        <mj-spacer height="25px" />
+        
+        <mj-text color="#E0E0E0" font-size="17px">
+          Need help getting started? Our support team is available 24/7.
+        </mj-text>
+        
+        <mj-text color="#E0E0E0" font-size="17px">
+          Connect instantly,<br />
+          <span style="color:#00FF00; font-weight:bold;">The DuckBuck Team</span>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    
+    <mj-section padding-top="30px">
+      <mj-column>
+        <mj-divider border-color="#333333" padding="0 25px" />
+        
+        <!-- Social Media Links -->
+        <mj-social font-size="12px" icon-size="30px" mode="horizontal" padding="20px 0">
+          <mj-social-element name="linkedin" href="https://www.linkedin.com/company/duckbuck-studios" background-color="#0077B5" alt="DuckBuck Studios on LinkedIn">
+            LinkedIn
+          </mj-social-element>
+        </mj-social>
+        
+        <mj-text align="center" font-size="13px" color="#A0A0A0" line-height="1.5">
+          &copy; 2025 DuckBuck Studios. All rights reserved.<br />
+          Dhenkanal, Odisha, India<br />
+          <a href="https://duckbuck.app/privacy" style="color: #00FF00; text-decoration: none;">Privacy Policy</a> | <a href="https://duckbuck.app/terms" style="color: #00FF00; text-decoration: none;">Terms of Service</a><br />
+          This is an automated message. Please do not reply directly to this email.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
