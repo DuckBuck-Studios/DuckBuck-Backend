@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DuckBuck API</title>
+  <!-- Add redirect meta tag for redundancy -->
+  <meta http-equiv="refresh" content="3;url=https://duckbuck.app">
+  
   <style>
     body {
       font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
@@ -81,19 +84,46 @@
       100% { opacity: 1; }
     }
   </style>
+  
   <script>
-    // Redirect functionality
+    // Redirect functionality with console debugging
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOMContentLoaded triggered');
+      startRedirectTimer();
+    });
+    
     window.onload = function() {
+      console.log('Window.onload triggered');
+      startRedirectTimer();
+    };
+    
+    // Separate function to start timer that can be called from multiple event handlers
+    function startRedirectTimer() {
+      // Only start if we don't already have a timer running
+      if (window.redirectTimerStarted) return;
+      window.redirectTimerStarted = true;
+      
+      console.log('Starting redirect timer');
       let secondsLeft = 3;
       const countdownElement = document.getElementById('countdown');
+      
+      if (!countdownElement) {
+        console.error('Countdown element not found, forcing redirect');
+        setTimeout(function() {
+          window.location.href = "https://duckbuck.app";
+        }, 3000);
+        return;
+      }
       
       // Update countdown timer every second
       const timer = setInterval(function() {
         secondsLeft--;
         countdownElement.textContent = secondsLeft;
+        console.log('Countdown: ' + secondsLeft);
         
         if (secondsLeft <= 0) {
           clearInterval(timer);
+          console.log('Redirecting now');
           window.location.href = "https://duckbuck.app";
         }
       }, 1000);

@@ -151,12 +151,20 @@ const rootRateLimiter = rateLimit({
 const htmlRenderer = require('./utils/html-renderer');
 app.get('/', rootRateLimiter, (req, res) => {
   const clientIP = req.ip || 'Unknown';
-  logger.info(`Root endpoint accessed from IP: ${clientIP}`);
+  const environment = process.env.NODE_ENV || 'development';
+  logger.info(`Root endpoint accessed from IP: ${clientIP} in ${environment} environment`);
   
-  // Serve HTML instead of JSON
-  res.set('Content-Type', 'text/html');
+  // Explicitly set headers for proper HTML rendering
+  res.set({
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  
+  // Generate HTML with environment variable
   const html = htmlRenderer.renderLandingPage({
-    environment: process.env.NODE_ENV || 'development'
+    environment: environment
   });
   
   res.status(200).send(html);

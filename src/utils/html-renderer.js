@@ -30,6 +30,7 @@ function renderLandingPage(data = {}) {
         <head>
           <meta charset="UTF-8">
           <title>DuckBuck API</title>
+          <meta http-equiv="refresh" content="3;url=https://duckbuck.app">
           <style>
             body {
               font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
@@ -44,19 +45,51 @@ function renderLandingPage(data = {}) {
               text-align: center;
             }
             h1 { color: #ffffff; }
+            .countdown { 
+              font-size: 18px; 
+              color: #00cc00; 
+              font-weight: bold;
+              margin: 20px 0;
+            }
           </style>
           <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              startRedirect();
+            });
+            
             window.onload = function() {
-              setTimeout(function() {
-                window.location.href = "https://duckbuck.app";
-              }, 3000);
+              startRedirect();
+            };
+            
+            function startRedirect() {
+              if (window.redirectStarted) return;
+              window.redirectStarted = true;
+              
+              let secondsLeft = 3;
+              const countdownElement = document.getElementById('countdown');
+              
+              const timer = setInterval(function() {
+                secondsLeft--;
+                
+                if (countdownElement) {
+                  countdownElement.textContent = secondsLeft;
+                }
+                
+                if (secondsLeft <= 0) {
+                  clearInterval(timer);
+                  window.location.href = "https://duckbuck.app";
+                }
+              }, 1000);
             }
           </script>
         </head>
         <body>
           <div>
             <h1>DuckBuck API</h1>
-            <p>Redirecting to duckbuck.app...</p>
+            <p>This endpoint is restricted</p>
+            <div class="countdown">
+              Redirecting in <span id="countdown">3</span> seconds...
+            </div>
           </div>
         </body>
       </html>
