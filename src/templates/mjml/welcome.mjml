@@ -126,6 +126,9 @@
           <mj-social-element name="linkedin" href="https://www.linkedin.com/company/duckbuck-studios" background-color="#0077B5" alt="DuckBuck Studios on LinkedIn">
             LinkedIn
           </mj-social-element>
+          <mj-social-element name="instagram" href="https://www.instagram.com/duckbuck_studios/" background-color="#E1306C" alt="DuckBuck Studios on Instagram">
+            Instagram
+          </mj-social-element>
         </mj-social>
         
         <mj-text align="center" font-size="13px" color="#A0A0A0" line-height="1.5">

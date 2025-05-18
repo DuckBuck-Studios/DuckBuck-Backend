@@ -103,6 +103,25 @@ exports.sendLoginNotificationHandler = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid loginTime format.' });
     }
     
+    // Format timestamp nicely if it appears to be in ISO or standard format
+    if (loginTime && loginTime.match(/^\d{4}-\d{2}-\d{2}/) || loginTime.match(/^\d{4}\/\d{2}\/\d{2}/)) {
+      try {
+        const date = new Date(loginTime);
+        if (!isNaN(date)) {
+          loginTime = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
+        }
+      } catch (e) {
+        // Keep the original format if parsing fails
+      }
+    }
+    
     // Authorization check: Ensure the email belongs to the authenticated user
     if (req.user && req.user.email && req.user.email !== email) {
       logger.warn(`Unauthorized attempt to send login notification to ${email} by user ${req.user.uid}. IP: ${req.ip}`);

@@ -217,7 +217,20 @@ exports.sendLoginNotification = async (req, email, username, loginTime) => {
       return;
     }
 
-    const timeOfLogin = loginTime || new Date().toLocaleString();
+    // Format date nicely with AM/PM
+    let timeOfLogin = loginTime;
+    if (!timeOfLogin) {
+      const now = new Date();
+      timeOfLogin = now.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+
     const ipAddress = getClientIp(req);
     // Don't use test IPs in production, but in development we can use a fallback
     let lookupIp = ipAddress;

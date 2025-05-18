@@ -105,8 +105,8 @@
         </mj-text>
         <mj-spacer height="20px" />
         <mj-text color="#E0E0E0">
-          Stay secure,<br />
-          DuckBuck Studios
+          Connect instantly,<br />
+          <span style="color:#00FF00; font-weight:bold;">The DuckBuck Team</span>
         </mj-text>
       </mj-column>
     </mj-section>
@@ -114,13 +114,15 @@
       <mj-column>
         <mj-divider border-color="#333333" padding="0 25px" />
         <!-- 4. Social Media Links -->
-        <mj-social font-size="12px" icon-size="24px" mode="horizontal" padding="15px 0">
-          <mj-social-element name="linkedin" href="https://www.linkedin.com/company/duckbuck-studios" alt="DuckBuck Studios on LinkedIn">
+        <mj-social font-size="12px" icon-size="30px" mode="horizontal" padding="20px 0">
+          <mj-social-element name="linkedin" href="https://www.linkedin.com/company/duckbuck-studios" background-color="#0077B5" alt="DuckBuck Studios on LinkedIn">
             LinkedIn
           </mj-social-element>
-          <!-- Add other social media elements here -->
+          <mj-social-element name="instagram" href="https://www.instagram.com/duckbuck_studios/" background-color="#E1306C" alt="DuckBuck Studios on Instagram">
+            Instagram
+          </mj-social-element>
         </mj-social>
-        <mj-text align="center" font-size="12px" color="#A0A0A0" line-height="1.4">
+        <mj-text align="center" font-size="13px" color="#A0A0A0" line-height="1.5">
           &copy; 2025 DuckBuck Studios. All rights reserved.<br />
           Dhenkanal, Odisha, India<br />
           <a href="https://duckbuck.app/privacy" style="color: #00FF00; text-decoration: none;">Privacy Policy</a> | <a href="https://duckbuck.app/terms" style="color: #00FF00; text-decoration: none;">Terms of Service</a><br />
