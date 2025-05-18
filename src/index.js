@@ -134,11 +134,32 @@ const limiter = rateLimit({
 // Apply rate limiting to all requests
 app.use(limiter);
 
-// Root route
-app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'DuckBuck'
+// Very strict rate limiter for root route
+const rootRateLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minute window
+  max: 3, // limit each IP to 3 requests per 5 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count successful requests against the rate limit
+  message: {
+    error: 'Access blocked',
+    message: 'Too many attempts detected'
+  }
+});
+
+// Root route with Google-style HTML response
+const htmlRenderer = require('./utils/html-renderer');
+app.get('/', rootRateLimiter, (req, res) => {
+  const clientIP = req.ip || 'Unknown';
+  logger.info(`Root endpoint accessed from IP: ${clientIP}`);
+  
+  // Serve HTML instead of JSON
+  res.set('Content-Type', 'text/html');
+  const html = htmlRenderer.renderLandingPage({
+    environment: process.env.NODE_ENV || 'development'
   });
+  
+  res.status(200).send(html);
 });
 
 // Routes
