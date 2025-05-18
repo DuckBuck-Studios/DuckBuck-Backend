@@ -24,52 +24,42 @@ const getClientIp = (req) => {
                                         process.env.GOOGLE_CLOUD_PROJECT)}`);
     }
     
-    // Check for Google Cloud Run specific headers
-    // Google Cloud Run puts the original client IP in the last entry of X-Forwarded-For
-    const forwardedFor = req.headers['x-forwarded-for'];
-    const realIp = req.headers['x-real-ip'];
+    // PRIORITY 1: Check for Cloudflare's specific header - most reliable for Cloudflare-proxied sites
+    const cfConnectingIp = req.headers['cf-connecting-ip'];
+    if (cfConnectingIp) {
+      return cfConnectingIp;
+    }
     
-    // If x-forwarded-for exists, it contains a comma-separated list of IPs
+    // PRIORITY 2: Check for standard real-IP header (common in Nginx)
+    const realIp = req.headers['x-real-ip'];
+    if (realIp) {
+      return realIp;
+    }
+    
+    // PRIORITY 3: Process X-Forwarded-For header
+    const forwardedFor = req.headers['x-forwarded-for'];
     if (forwardedFor) {
-      // For Google Cloud Run, the client IP is typically the last entry
-      // But we'll check both first and last for better compatibility
       const ips = forwardedFor.split(',').map(ip => ip.trim());
       
       // Filter out private IPs (sometimes added by internal proxies)
       const publicIps = ips.filter(ip => !isPrivateIp(ip));
       
       if (publicIps.length > 0) {
-        // In Google Cloud Run, the last entry is usually the original client IP
-        // But in other environments it's often the first entry
-        // So we check if we're in a Google-hosted environment
-        if (req.headers['x-cloud-trace-context'] || 
-            req.headers['x-google-cloud-trace'] ||
-            process.env.GOOGLE_CLOUD_PROJECT) {
-          return publicIps[publicIps.length - 1]; // Last entry for Google environments
-        } else {
-          return publicIps[0]; // First entry for standard proxy setups
-        }
+        // For most proxies, the client IP is the first entry in x-forwarded-for
+        // But for Google Cloud Run, it might be the last public IP
+        const isGoogleEnv = req.headers['x-cloud-trace-context'] || 
+                            req.headers['x-google-cloud-trace'] ||
+                            process.env.GOOGLE_CLOUD_PROJECT;
+        
+        return isGoogleEnv ? publicIps[publicIps.length - 1] : publicIps[0];
       }
       
-      // If no public IPs, use the appropriate entry based on environment
-      if (req.headers['x-cloud-trace-context'] || 
-          req.headers['x-google-cloud-trace'] ||
-          process.env.GOOGLE_CLOUD_PROJECT) {
-        return ips[ips.length - 1]; // Last entry for Google environments
-      } else {
-        return ips[0]; // First entry for standard proxy setups
-      }
-    }
-    
-    // Check x-real-ip header (common in Nginx)
-    if (realIp) {
-      return realIp;
-    }
-    
-    // If behind a CF proxy, check Cloudflare specific header
-    const cfConnectingIp = req.headers['cf-connecting-ip'];
-    if (cfConnectingIp) {
-      return cfConnectingIp;
+      // If no public IPs found, use first or last based on environment
+      const isGoogleEnv = req.headers['x-cloud-trace-context'] || 
+                          req.headers['x-google-cloud-trace'] ||
+                          process.env.GOOGLE_CLOUD_PROJECT;
+      
+      return isGoogleEnv ? ips[ips.length - 1] : ips[0];
     }
     
     // Fallback to standard request properties
