@@ -18,6 +18,8 @@
   "license": "ISC",
   "description": "Backend service for DuckBuck",
   "dependencies": {
+    "@google-cloud/firestore": "^7.11.1",
+    "@google-cloud/storage": "^7.16.0",
     "agora-token": "^2.0.3",
     "check-disk-space": "^3.4.0",
     "compression": "^1.8.0",

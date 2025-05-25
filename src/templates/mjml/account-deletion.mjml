@@ -54,18 +54,10 @@
       .footer a:hover {
         color: #00FF00;
       }
-      .highlight-red {
-        color: #FF3366;
+      .highlight-green {
+        color: #00FF7F;
         font-weight: 700;
-        text-shadow: 0 0 8px rgba(255, 51, 102, 0.3);
-      }
-      .info-box {
-        background: linear-gradient(145deg, #21262D 0%, #2D333B 100%);
-        border-radius: 10px;
-        padding: 20px;
-        margin: 20px 0;
-        border-left: 4px solid #FF3366;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        text-shadow: 0 0 8px rgba(0, 255, 127, 0.3);
       }
       .heading {
         letter-spacing: 1px;
@@ -109,11 +101,6 @@
         background: linear-gradient(90deg, transparent, #FF3366, #00FF7F, #00D9FF, transparent);
         border: none;
       }
-      .time-format {
-        color: #00D9FF;
-        font-weight: 600;
-        font-family: 'Courier New', monospace;
-      }
     </mj-style>
   </mj-head>
   <mj-body mj-class="container">
@@ -144,8 +131,8 @@
     </mj-section>
     <mj-section mj-class="content-wrapper">
       <mj-column>
-        <mj-text font-size="32px" font-weight="bold" color="#FF3366" css-class="heading" align="center">
-          Security Alert: New Login
+        <mj-text font-size="32px" font-weight="bold" color="#FF6B9D" css-class="heading" align="center">
+          Account Deletion Confirmed
         </mj-text>
         <mj-spacer height="30px" />
         <mj-text color="#E8E9EA" font-size="18px" font-weight="500">
@@ -153,49 +140,28 @@
         </mj-text>
         <mj-spacer height="20px" />
         <mj-text color="#E8E9EA" font-size="17px" line-height="1.7">
-          We detected a new login to your DuckBuck account, your secure communication hub. Here are the details:
+          Your DuckBuck account has been <span style="color: #FF6B9D; font-weight: 600;">successfully deleted</span>. All your data and associated content has been permanently removed from our systems with the highest security standards.
         </mj-text>
-        <mj-spacer height="30px" />
-        
-        <mj-text>
-          <div class="info-box">
-            <div style="font-size:17px; color:#FFFFFF; margin-bottom:15px;">
-              <strong style="color:#FF6B9D;">🔐 Login Details</strong>
-            </div>
-            <table style="width: 100%; color:#E8E9EA; font-size:16px; line-height:1.8;">
-              <tr>
-                <td style="padding: 6px 0; width: 30%;"><strong style="color: #FF6B9D;">Time:</strong></td>
-                <td style="padding: 6px 0;"><span class="time-format">{{loginTime}}</span></td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0;"><strong style="color: #FF6B9D;">Location:</strong></td>
-                <td style="padding: 6px 0;">{{loginLocation}}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0;"><strong style="color: #FF6B9D;">IP Address:</strong></td>
-                <td style="padding: 6px 0; font-family: 'Courier New', monospace;">{{loginIp}}</td>
-              </tr>
-            </table>
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255, 107, 157, 0.2);">
-              <div style="color:#FF4848; font-size:16px; font-weight:600;">
-                ⚠️ If this was not you, please contact us immediately at 
-                <a href="mailto:contact@duckbuck.app" style="color:#FF3366; text-decoration:none; font-weight:bold;">contact@duckbuck.app</a>
-              </div>
-            </div>
-          </div>
-        </mj-text>
-        
         <mj-spacer height="30px" />
         
         <mj-text color="#E8E9EA" font-size="17px" line-height="1.7">
-          If this was you, you can safely ignore this message. We recommend regularly reviewing your account security settings to keep your communication secure.
+          We're genuinely sorry to see you go. If you'd like to share feedback about your experience with DuckBuck, our support team would love to hear from you – your insights help us improve for everyone.
         </mj-text>
+        
+        <mj-spacer height="30px" />
+        
+        <mj-button 
+          href="https://duckbuck.app" 
+          css-class="enhanced-button"
+          padding="15px 0">
+          ↻ Rejoin DuckBuck
+        </mj-button>
         
         <mj-spacer height="30px" />
         
         <mj-text color="#E8E9EA" font-size="17px" line-height="1.7" align="center">
-          Stay secure,<br />
-          <span class="highlight-red">— The DuckBuck Team</span>
+          Thank you for being part of our community,<br />
+          <span class="highlight-green">— The DuckBuck Team</span>
         </mj-text>
       </mj-column>
     </mj-section>
@@ -233,7 +199,7 @@
           <a href="https://duckbuck.app/privacy" style="color: #00D9FF; text-decoration: none; font-weight: 600;">Privacy Policy</a> 
           <span style="color: #FF3366;"> • </span> 
           <a href="https://duckbuck.app/terms" style="color: #00D9FF; text-decoration: none; font-weight: 600;">Terms of Service</a><br /><br />
-          <span style="color: #6E7681; font-size: 12px;">This is an automated security notification. Please do not reply directly to this email.</span>
+          <span style="color: #6E7681; font-size: 12px;">This is an automated message. Please do not reply directly to this email.</span>
         </mj-text>
       </mj-column>
     </mj-section>

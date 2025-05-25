@@ -10,7 +10,6 @@ const xss = require('xss-clean');
 const mongoSanitize = require('express-mongo-sanitize');
 const hpp = require('hpp');
 const compression = require('compression');
-const mongoose = require('mongoose');
 const connectDB = require('./config/database');
 const logger = require('./utils/logger');
 const httpsRedirect = require('./middlewares/https-redirect');
@@ -173,8 +172,8 @@ app.get('/', rootRateLimiter, (req, res) => {
 // Routes
 app.use('/api/waitlist', require('./routes/waitlist.routes'));
 app.use('/api/contact', require('./routes/message.routes'));
-app.use('/api/email', require('./routes/email.routes'));
 app.use('/api/health', require('./routes/health.routes'));
+app.use('/api/users', require('./routes/user.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

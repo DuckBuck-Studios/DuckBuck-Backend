@@ -152,6 +152,41 @@ const schemas = {
     loginTime: Joi.string()
       .max(100)
       .optional()
+  }),
+  
+  // Schema for sending welcome email (for user.routes.js)
+  sendWelcomeEmailSchema: Joi.object({
+    email: Joi.string()
+      .email({ minDomainSegments: 2 })
+      .required()
+      .max(254),
+    username: Joi.string()
+      .min(3)
+      .max(50)
+      .pattern(/^[a-zA-Z0-9._-]+$/)
+      .required()
+      .messages({
+        'string.min': 'Username must be at least 3 characters long',
+        'string.max': 'Username must be at most 50 characters long',
+        'string.pattern.base': 'Username can only contain letters, numbers, dots, underscores, and hyphens',
+        'any.required': 'Username is required'
+      })
+  }),
+
+  // Schema for sending login notification email (for user.routes.js)
+  sendLoginNotificationSchema: Joi.object({
+    email: Joi.string()
+      .email({ minDomainSegments: 2 })
+      .required()
+      .max(254),
+    username: Joi.string()
+      .min(3)
+      .max(50)
+      .pattern(/^[a-zA-Z0-9._-]+$/)
+      .required(),
+    loginTime: Joi.string()
+      .max(100)
+      .optional()
   })
 };
 
