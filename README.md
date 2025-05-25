@@ -16,10 +16,11 @@ Backend service for Firebase Cloud Messaging and Agora token generation. This se
   - Rate limiting
   - HTTPS redirects in production
 - API key authentication
-- Request validation with Joi
+- Request validation
 - Logging with Winston
 - Request timeout handling
 - Health check endpoint
+- Transactional email service (Welcome, Login Notification, Account Deletion)
 
 ## Prerequisites
 
@@ -27,44 +28,50 @@ Backend service for Firebase Cloud Messaging and Agora token generation. This se
 - MongoDB
 - Firebase Admin SDK credentials
 - Agora App ID and certificate
+- Gmail/Google Workspace account for sending emails (App Password required)
 
 ## Environment Variables
 
-Create a `.env` file in the root directory using the provided `.env.example` as a template. Key variables include:
+Create a `.env` file in the root directory. Key variables include:
 
 ```env
 # Server
 PORT=8080
-NODE_ENV=production
-TRUST_PROXY=true
+NODE_ENV=production # or development
+TRUST_PROXY=true # Set to true if behind a proxy/load balancer
 REQUEST_TIMEOUT_MS=30000
+
+# API Key (generate a secure random string)
+API_KEY=your_secure_api_key
 
 # API Rate Limiting
 API_RATE_WINDOW_MS=900000  # 15 minutes in milliseconds
-API_RATE_LIMIT=100
+API_RATE_LIMIT=100         # Max requests per window per IP
 
 # Database
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database_name
+MONGO_DB_NAME=your_database_name
 
 # Firebase
-FIREBASE_PROJECT_ID=your-project-id
-# For production, use base64 encoded service account JSON
-FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"your-project",...}
+# Ensure FIREBASE_SERVICE_ACCOUNT_JSON is a valid JSON string or a base64 encoded JSON string for production.
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"your-project-id",...}
 
 # Email Configuration
-EMAIL_AUTH_ADDRESS=admin@yourdomain.com
-GMAIL_EMAIL=no-reply@yourdomain.com
-GMAIL_APP_PASSWORD=your-app-password
+EMAIL_AUTH_ADDRESS=your_primary_google_account_email@gmail.com # e.g., admin@example.com
+GMAIL_EMAIL=your_sending_email_address@yourdomain.com          # e.g., no-reply@example.com (can be an alias)
+GMAIL_APP_PASSWORD=your_google_app_password                    # 16-character app password
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=465
-EMAIL_SECURE=true
-FIREBASE_CLIENT_EMAIL=your-client-email
+EMAIL_SECURE=true                                            # Use true for SSL (port 465)
+# Optional: Email rate limiting (per recipient)
+# EMAIL_RATE_WINDOW_MS=86400000 # 24 hours
+# EMAIL_RATE_LIMIT=5            # Max 5 emails per recipient per window
 
 # Agora
 AGORA_APP_ID=your-agora-app-id
 AGORA_APP_CERTIFICATE=your-agora-app-certificate
 
-# Security
+# Security (Content Security Policy)
 CSP_DIRECTIVES={"defaultSrc":["'self'"],"imgSrc":["'self'","data:"],"styleSrc":["'self'","'unsafe-inline'"],"scriptSrc":["'self'"],"connectSrc":["'self'"]}
 ```
 
@@ -79,179 +86,92 @@ cd duckbuck-backend
 npm install
 ```
 
-## Usage
-
-### Development
-
-```bash
-npm run dev
-```
-
-### Production
+## Running the Server
 
 ```bash
 npm start
 ```
+This will start the backend server. By default, it runs on the port specified in your `.env` file (e.g., 8080).
 
-### Testing
+## API Endpoints
 
-```bash
-npm test
-```
-
-### Linting
-
-```bash
-npm run lint
-```
-
-## API Routes
-
-### Waitlist Registration
-
-- `POST /api/waitlist`: Register a new user for the waitlist
-
-### Contact/Message
-
-- `POST /api/contact`: Submit a contact form message
+All API endpoints require an `X-API-Key` header with the value of your `API_KEY` from the `.env` file.
+Endpoints under `/api/users/` also require Firebase authentication (Bearer token).
 
 ### Health Check
+- **`GET /health`**
+  - Description: Get server health status, including uptime, memory usage, and database connectivity.
+  - Request Body: None
+  - Response: JSON object with health status.
 
-- `GET /health`: Get server health status
+### Waitlist Registration
+- **`POST /api/waitlist`**
+  - Description: Register a new user for the waitlist.
+  - Request Body:
+    ```json
+    {
+      "email": "user@example.com"
+    }
+    ```
+  - Response: Success or error message.
 
-## Project Structure
+### Contact/Message
+- **`POST /api/contact`**
+  - Description: Submit a contact form message.
+  - Request Body:
+    ```json
+    {
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "message": "Hello, I have a question."
+    }
+    ```
+  - Response: Success or error message.
 
+### User Management & Email Notifications
+*(These endpoints require Firebase Authentication - include a Bearer token in the Authorization header)*
+
+- **`POST /api/users/send-welcome-email`**
+  - Description: Sends a welcome email to the specified user.
+  - Request Body:
+    ```json
+    {
+      "email": "user@example.com",
+      "username": "NewUser123"
+    }
+    ```
+  - Response: Success or error message.
+
+- **`POST /api/users/send-login-notification`**
+  - Description: Sends a login notification email.
+  - Request Body:
+    ```json
+    {
+      "email": "user@example.com",
+      "username": "User123",
+      "loginTime": "May 25, 2025, 10:00:00 AM" // Optional, otherwise current time is used
+    }
+    ```
+  - Response: Success or error message.
+
+- **`DELETE /api/users/delete`**
+  - Description: Deletes a user account from Firebase Authentication, Firestore, and Storage. Sends a deletion confirmation email.
+  - Request Body:
+    ```json
+    {
+      "uid": "firebase_user_uid_to_delete"
+    }
+    ```
+  - Response: Success or error message.
+
+### HTML Templates
+Email templates are sourced from MJML files in `src/templates/mjml/` and compiled to HTML in `src/templates/html/`.
+If you modify the `.mjml` files, you need to recompile them to HTML using the MJML CLI:
+```bash
+# Example: npm install -g mjml
+mjml -r src/templates/mjml/welcome.mjml -o src/templates/html/welcome.html
 ```
-duckbuck-backend/
-├── logs/                 # Log files
-├── src/
-│   ├── config/           # Configuration files
-│   ├── controllers/      # Route controllers
-│   ├── middlewares/      # Express middlewares
-│   ├── models/           # Mongoose models
-│   ├── routes/           # Express routes
-│   ├── services/         # Business logic
-│   ├── utils/            # Utility functions
-│   ├── validators/       # Request validators
-│   └── index.js          # Entry point
-├── .env                  # Environment variables (not in repo)
-├── .gitignore            # Git ignore file
-├── package.json          # Project metadata and dependencies
-└── README.md             # Project documentation
-```
-
-## Deployment
-
-The application is configured for production deployment with the following features:
-
-- HTTPS redirect in production environments
-- Trust proxy settings for running behind load balancers
-- Graceful shutdown handling
-- Error and exception handling
-- Response compression
-- Resource monitoring in the health check endpoint
-
-## Error Handling
-
-The application has comprehensive error handling for:
-- Request validation errors
-- Database errors including duplicate keys
-- Rate limiting
-- Request timeouts
-- Unhandled rejections and exceptions
-
-## Security Considerations
-
-This application implements multiple layers of security:
-- Helmet for HTTP headers
-- XSS protection with xss-clean
-- MongoDB query injection protection
-- Parameter pollution prevention
-- Rate limiting
-- CORS configuration
-
-## Email Service
-
-The application includes a robust email service for sending transactional emails:
-
-### Features
-
-- Welcome emails for new user registrations
-- Login notification emails for security
-- Production-ready HTML templates
-- Google Workspace / Gmail integration
-- Support for email aliases
-- Rate limiting to prevent abuse
-- Error handling with comprehensive logging
-
-### Email Configuration
-
-To set up the email service:
-
-1. **Create App Password for Gmail**:
-   - Go to your Google Account > Security
-   - Enable 2-Step Verification if not already enabled
-   - Create an App Password for the application
-   - Use this password in the `GMAIL_APP_PASSWORD` environment variable
-
-2. **Email Alias Setup** (if using an alias like no-reply@yourdomain.com):
-   - Configure the alias in Google Workspace Admin Console
-   - Set `EMAIL_AUTH_ADDRESS` to your primary email that owns the alias
-   - Set `GMAIL_EMAIL` to the alias email address
-
-3. **Environment Variables**:
-   - `EMAIL_AUTH_ADDRESS`: Primary email for authentication
-   - `GMAIL_EMAIL`: Email address to send from (can be an alias)
-   - `GMAIL_APP_PASSWORD`: App password generated from Google
-   - `EMAIL_HOST`: SMTP server host (default: smtp.gmail.com)
-   - `EMAIL_PORT`: SMTP port (default: 465 for SSL)
-   - `EMAIL_SECURE`: Whether to use SSL (default: true)
-   - `EMAIL_RATE_WINDOW_MS`: Rate limiting window in milliseconds
-   - `EMAIL_RATE_LIMIT`: Maximum emails in the rate limiting window
-
-### API Endpoints
-
-#### Send Welcome Email
-```
-POST /api/email/send-welcome
-```
-*Requires API key and Firebase authentication*
-
-Request body:
-```json
-{
-  "email": "user@example.com",
-  "username": "Username"
-}
-```
-
-#### Send Login Notification
-```
-POST /api/email/send-login-notification
-```
-*Requires API key and Firebase authentication*
-
-Request body:
-```json
-{
-  "email": "user@example.com",
-  "username": "Username",
-  "loginTime": "May 18, 2025, 15:30:00"
-}
-```
-
-### Templates
-
-Email templates are stored in two formats:
-- MJML source files in `src/templates/mjml/`
-- Compiled HTML templates in `src/templates/html/`
-
-To modify templates, edit the MJML files and compile them to HTML using the MJML CLI or online tools.
 
 ## License
 
 ISC
-
----
-
-For any issues or feature requests, please contact the development team.
