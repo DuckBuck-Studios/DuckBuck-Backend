@@ -30,56 +30,11 @@ Backend service for Firebase Cloud Messaging and Agora token generation. This se
 - Agora App ID and certificate
 - Gmail/Google Workspace account for sending emails (App Password required)
 
-## Environment Variables
-
-Create a `.env` file in the root directory. Key variables include:
-
-```env
-# Server
-PORT=8080
-NODE_ENV=production # or development
-TRUST_PROXY=true # Set to true if behind a proxy/load balancer
-REQUEST_TIMEOUT_MS=30000
-
-# API Key (generate a secure random string)
-API_KEY=your_secure_api_key
-
-# API Rate Limiting
-API_RATE_WINDOW_MS=900000  # 15 minutes in milliseconds
-API_RATE_LIMIT=100         # Max requests per window per IP
-
-# Database
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database_name
-MONGO_DB_NAME=your_database_name
-
-# Firebase
-# Ensure FIREBASE_SERVICE_ACCOUNT_JSON is a valid JSON string or a base64 encoded JSON string for production.
-FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"your-project-id",...}
-
-# Email Configuration
-EMAIL_AUTH_ADDRESS=your_primary_google_account_email@gmail.com # e.g., admin@example.com
-GMAIL_EMAIL=your_sending_email_address@yourdomain.com          # e.g., no-reply@example.com (can be an alias)
-GMAIL_APP_PASSWORD=your_google_app_password                    # 16-character app password
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=465
-EMAIL_SECURE=true                                            # Use true for SSL (port 465)
-# Optional: Email rate limiting (per recipient)
-# EMAIL_RATE_WINDOW_MS=86400000 # 24 hours
-# EMAIL_RATE_LIMIT=5            # Max 5 emails per recipient per window
-
-# Agora
-AGORA_APP_ID=your-agora-app-id
-AGORA_APP_CERTIFICATE=your-agora-app-certificate
-
-# Security (Content Security Policy)
-CSP_DIRECTIVES={"defaultSrc":["'self'"],"imgSrc":["'self'","data:"],"styleSrc":["'self'","'unsafe-inline'"],"scriptSrc":["'self'"],"connectSrc":["'self'"]}
-```
-
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/duckbuck-backend.git
+git clone https://github.com/DuckBuck-Studios/DuckBuck-Backend.git
 cd duckbuck-backend
 
 # Install dependencies
