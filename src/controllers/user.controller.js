@@ -6,6 +6,7 @@ const emailService = require('../services/email.service');
 const path = require('path'); // Added for GeoIP database path
 const fs = require('fs'); // Added
 const { Reader } = require('maxmind'); // Changed
+const { getClientIp } = require('../utils/ip-helper'); // Added
 
 // Cache storage bucket names to reduce API calls
 const bucketCache = new Map();
@@ -223,14 +224,14 @@ exports.sendLoginNotificationHandler = async (req, res) => {
 exports.ipDebug = async (req, res) => {
   // Check if IP Debug is enabled, especially in production
   if (process.env.NODE_ENV === 'production' && process.env.DEBUG_IP !== 'true') {
-    logger.warn(`IP debug endpoint accessed in production while disabled. IP: ${req.ip}`);
+    logger.warn(`IP debug endpoint accessed in production while disabled. IP: ${getClientIp(req)}`);
     return res.status(403).json({
       success: false,
       message: 'Forbidden: IP Debug is not enabled in this environment.'
     });
   }
 
-  const ipAddress = req.ip;
+  const ipAddress = getClientIp(req); // Use getClientIp
   let location = 'Unknown';
   let geoIpReader;
 
