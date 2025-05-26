@@ -10,8 +10,12 @@ const { validateSchema, schemas } = require('../middlewares/validate-schema');
 
 // Constants for configurations
 const DEFAULT_REQUEST_TIMEOUT_MS = 30000;  // 30 seconds
-const DEFAULT_RATE_LIMIT = 10;             // 10 requests per hour
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const DEFAULT_USER_RATE_LIMIT = 10;             // 10 requests per hour
+const USER_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const DEFAULT_EMAIL_RATE_LIMIT = 5;
+const EMAIL_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const DEFAULT_IP_DEBUG_RATE_LIMIT = 5;
+const IP_DEBUG_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
 /**
  * Request timeout middleware - ensures requests don't hang indefinitely
@@ -56,8 +60,8 @@ const requestTimeout = (req, res, next) => {
  * Uses in-memory store by default, but can be configured to use Redis in production
  */
 const userRateLimiter = rateLimit({
-  windowMs: RATE_LIMIT_WINDOW_MS,
-  max: process.env.USER_RATE_LIMIT || DEFAULT_RATE_LIMIT,
+  windowMs: USER_RATE_LIMIT_WINDOW_MS, // Directly use constant
+  max: DEFAULT_USER_RATE_LIMIT, // Directly use constant
   standardHeaders: true, 
   legacyHeaders: false,
   message: {
@@ -84,8 +88,8 @@ const userRateLimiter = rateLimit({
  * Rate limiting for email endpoints
  */
 const emailLimiter = rateLimit({
-  windowMs: parseInt(process.env.EMAIL_RATE_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes window by default
-  max: parseInt(process.env.EMAIL_RATE_LIMIT) || 5, // limit each IP to 5 requests per windowMs (configurable)
+  windowMs: EMAIL_RATE_LIMIT_WINDOW_MS, // Directly use constant
+  max: DEFAULT_EMAIL_RATE_LIMIT, // Directly use constant
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -94,6 +98,25 @@ const emailLimiter = rateLimit({
   },
   handler: (req, res, _, options) => {
     logger.warn(`Rate limit exceeded for email service: ${req.ip}`);
+    res.status(options.statusCode).send(options.message);
+  }
+});
+
+/**
+ * Rate limiting for IP Debug endpoint
+ */
+const ipDebugRateLimiter = rateLimit({
+  windowMs: IP_DEBUG_RATE_LIMIT_WINDOW_MS, // Directly use constant
+  max: DEFAULT_IP_DEBUG_RATE_LIMIT, // Directly use constant
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count all requests
+  message: {
+    success: false,
+    message: 'Too many requests to IP debug endpoint from this IP, please try again later.'
+  },
+  handler: (req, res, _, options) => {
+    logger.warn(`Rate limit exceeded for IP debug endpoint: ${req.ip}`);
     res.status(options.statusCode).send(options.message);
   }
 });
@@ -243,7 +266,8 @@ router.post(
 // New IP Debug Route
 router.get(
   '/ip-debug',
-  apiKeyAuth, // Protect with API key only
+  apiKeyAuth,  // Existing: API key check first
+  ipDebugRateLimiter, // Added: Rate limit this specific endpoint
   ipDebug
 );
 

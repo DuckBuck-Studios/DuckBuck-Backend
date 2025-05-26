@@ -3,10 +3,8 @@ const logger = require('../utils/logger');
 const {Firestore} = require('@google-cloud/firestore');
 const {Storage} = require('@google-cloud/storage');
 const emailService = require('../services/email.service');
-const path = require('path'); // Added for GeoIP database path
-const fs = require('fs'); // Added
-const { Reader } = require('maxmind'); // Changed
-const { getClientIp } = require('../utils/ip-helper'); // Added
+const { getClientIp } = require('../utils/ip-helper');
+const fetch = require('node-fetch'); // Added for BigDataCloud
 
 // Cache storage bucket names to reduce API calls
 const bucketCache = new Map();
@@ -231,40 +229,56 @@ exports.ipDebug = async (req, res) => {
     });
   }
 
-  const ipAddress = getClientIp(req); // Use getClientIp
-  let location = 'Unknown';
-  let geoIpReader;
+  const ipAddress = getClientIp(req);
+  let locationDetails = null; // Will store the full BigDataCloud response
+  let displayLocation = 'Unknown';
 
-  try {
-    // Path to the GeoLite2-City.mmdb file, located at the project root
-    const dbPath = path.join(__dirname, '../../GeoLite2-City.mmdb');
-    const dbBuffer = fs.readFileSync(dbPath); // Read DB into buffer
-    geoIpReader = new Reader(dbBuffer); // Pass buffer to Reader constructor
-  } catch (error) {
-    logger.error('Failed to load GeoIP database for IP debug. Location lookups will be unavailable.', error);
-    geoIpReader = null;
-  }
+  const apiKey = process.env.BIGDATACLOUD_API_KEY;
 
-  if (geoIpReader && ipAddress && ipAddress !== '::1' && ipAddress !== '127.0.0.1' && ipAddress !== 'localhost') {
+  if (!apiKey) {
+    logger.error('BIGDATACLOUD_API_KEY is not set for IP debug. Location lookup will fail.');
+    displayLocation = 'Unknown Location (API key missing)';
+  } else if (ipAddress && ipAddress !== '::1' && ipAddress !== '127.0.0.1' && ipAddress !== 'localhost') {
     try {
-      const geo = geoIpReader.get(ipAddress);
-      if (geo && geo.city && geo.country) {
-        location = `${geo.city.names.en || 'Unknown City'}, ${geo.subdivisions ? geo.subdivisions[0].iso_code : 'Unknown Region'}, ${geo.country.iso_code || 'Unknown Country'}`;
-      } else if (geo && geo.country) {
-        location = `Unknown City, Unknown Region, ${geo.country.iso_code}`;
+      const url = `https://api.bigdatacloud.net/data/ip-geolocation?ip=${ipAddress}&key=${apiKey}`;
+      const response = await fetch(url);
+      locationDetails = await response.json(); // Store the full response
+
+      if (!response.ok) {
+        logger.error(`BigDataCloud API error for IP ${ipAddress} in ipDebug: ${response.status} ${response.statusText}. Body: ${JSON.stringify(locationDetails)}`);
+        displayLocation = 'Unknown Location (API error)';
+      } else {
+        let locationParts = [];
+        if (locationDetails.city) locationParts.push(locationDetails.city);
+        if (locationDetails.location && locationDetails.location.principalSubdivision) locationParts.push(locationDetails.location.principalSubdivision);
+        if (locationDetails.country && locationDetails.country.name) locationParts.push(locationDetails.country.name);
+        
+        if (locationParts.length > 0) {
+          displayLocation = locationParts.join(', ');
+        } else {
+          logger.warn(`BigDataCloud returned no specific location details for IP ${ipAddress} in ipDebug. Response: ${JSON.stringify(locationDetails)}`);
+          if (locationDetails.country && locationDetails.country.name) {
+            displayLocation = locationDetails.country.name; // Fallback to country
+          } else {
+            displayLocation = 'Location details not found';
+          }
+        }
       }
     } catch (error) {
-      logger.warn('GeoIP lookup failed for IP (debug):', ipAddress, error.message);
+      logger.error(`Error fetching geolocation from BigDataCloud for IP ${ipAddress} in ipDebug:`, error);
+      displayLocation = 'Unknown Location (Fetch error)';
+      locationDetails = { error: error.message }; // Store error in details
     }
   } else if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
-    location = 'Local Environment';
+    displayLocation = 'Local/Internal IP';
   }
 
   res.status(200).json({
     success: true,
     ipAddress,
-    location,
-    headers: req.headers // To see proxy headers if any
+    determinedLocation: displayLocation, // The string used in emails
+    bigDataCloudResponse: locationDetails, // Full API response
+    headers: req.headers
   });
 };
 

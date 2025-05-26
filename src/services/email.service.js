@@ -2,31 +2,15 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
 const { getClientIp } = require('../utils/ip-helper');
-const fs = require('fs'); // Added
-const { Reader } = require('maxmind'); 
+const fs = require('fs'); // fs is still used by getEmailHtml
+const fetch = require('node-fetch'); // Added for BigDataCloud
 
 // Setup for email configuration
 // All email configuration should come from environment variables
 const PRIMARY_EMAIL = process.env.EMAIL_AUTH_ADDRESS;
 const SENDER_EMAIL = process.env.GMAIL_EMAIL;
 
-// Initialize MaxMind reader
-// IMPORTANT: Download the GeoLite2-City.mmdb database from MaxMind
-// and update the path below.
-// You can sign up for a free account at https://www.maxmind.com/en/geolite2/signup
-// and download the database from https://www.maxmind.com/en/accounts/current/geoip/downloads
-let geoIpReader;
-try {
-  // Path to the GeoLite2-City.mmdb file, located at the project root
-  const dbPath = path.join(__dirname, '../../GeoLite2-City.mmdb');
-  const dbBuffer = fs.readFileSync(dbPath); // Read DB into buffer
-  geoIpReader = new Reader(dbBuffer); // Pass buffer to Reader constructor
-} catch (error) {
-  logger.error('Failed to load GeoIP database. Location lookups will be unavailable.', error);
-  geoIpReader = null; // Ensure geoIpReader is null if loading fails
-}
-
-// Nodemailer transporter setup for Gmail/Google Workspace
+// Nodemailer transporter setup
 // For Gmail/Google Workspace, an "App Password" is required if 2FA is enabled
 // See: https://support.google.com/accounts/answer/185833
 const transporter = nodemailer.createTransport({
@@ -44,6 +28,51 @@ const transporter = nodemailer.createTransport({
   rateDelta: 1000, // Limit to 1 message per second
   rateLimit: 5, // 5 messages in each rateDelta period
 });
+
+/**
+ * Fetches geolocation data from BigDataCloud API.
+ * @param {string} ipAddress - The IP address to geolocate.
+ * @returns {Promise<string>} A string describing the location, or an error message.
+ */
+const getGeoLocationFromBigDataCloud = async (ipAddress) => {
+  const apiKey = process.env.BIGDATACLOUD_API_KEY;
+  if (!apiKey) {
+    logger.error('BIGDATACLOUD_API_KEY is not set. Location lookups will use default.');
+    return 'Unknown Location (API key missing)';
+  }
+
+  if (!ipAddress || ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
+    return 'Local/Internal IP';
+  }
+
+  try {
+    const url = `https://api.bigdatacloud.net/data/ip-geolocation?ip=${ipAddress}&key=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error(`BigDataCloud API error for IP ${ipAddress}: ${response.status} ${response.statusText}. Body: ${errorText}`);
+      return 'Unknown Location (API error)';
+    }
+    const data = await response.json();
+    
+    let locationParts = [];
+    if (data.city) locationParts.push(data.city);
+    if (data.location && data.location.principalSubdivision) locationParts.push(data.location.principalSubdivision);
+    if (data.country && data.country.name) locationParts.push(data.country.name);
+    
+    if (locationParts.length > 0) {
+      return locationParts.join(', ');
+    } else {
+      logger.warn(`BigDataCloud returned no specific location details for IP ${ipAddress}. Response: ${JSON.stringify(data)}`);
+      // Fallback to country name if available and other parts are missing
+      if (data.country && data.country.name) return data.country.name;
+      return 'Location details not found';
+    }
+  } catch (error) {
+    logger.error(`Error fetching geolocation from BigDataCloud for IP ${ipAddress}:`, error);
+    return 'Unknown Location (Fetch error)';
+  }
+};
 
 /**
  * Reads an HTML email template and replaces placeholders.
@@ -184,28 +213,12 @@ exports.sendWelcomeEmail = async (req, email, username) => {
   try {
     // Rate limiting check for individual recipients
     if (shouldRateLimitRecipient(email)) {
-      logger.warn(`Rate limit exceeded for recipient: ${email}`);
-      return;
+      logger.warn(`Rate limit exceeded for welcome email to: ${email}`);
+      return; // Do not send email if rate limited
     }
 
     const ipAddress = getClientIp(req);
-    let location = 'Unknown Location';
-
-    if (geoIpReader && ipAddress && ipAddress !== '::1' && ipAddress !== '127.0.0.1' && ipAddress !== 'localhost') {
-      try {
-        const geo = geoIpReader.get(ipAddress);
-        if (geo && geo.city && geo.country) {
-          location = `${geo.city.names.en || 'Unknown City'}, ${geo.subdivisions ? geo.subdivisions[0].iso_code : 'Unknown Region'}, ${geo.country.iso_code || 'Unknown Country'}`;
-        } else if (geo && geo.country) {
-          location = `Unknown City, Unknown Region, ${geo.country.iso_code}`;
-        }
-      } catch (error) {
-        logger.warn('GeoIP lookup failed for IP:', ipAddress, error.message);
-      }
-    } else if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
-      location = 'Local Environment';
-    }
-
+    const location = await getGeoLocationFromBigDataCloud(ipAddress); // Changed to BigDataCloud
 
     logger.info(`Attempting to send welcome email to: ${email} for user: ${username} (UID: ${req.user ? req.user.uid : 'N/A'}), IP: ${ipAddress}, Location: ${location}`);
 
@@ -258,8 +271,8 @@ exports.sendLoginNotification = async (req, email, username, loginTime) => {
   try {
     // Rate limiting check for individual recipients
     if (shouldRateLimitRecipient(email)) {
-      logger.warn(`Rate limit exceeded for recipient: ${email}`);
-      return;
+      logger.warn(`Rate limit exceeded for login notification to: ${email}`);
+      return; // Do not send email if rate limited
     }
 
     // Format date nicely with AM/PM, whether it's passed in or generated now
@@ -270,22 +283,7 @@ exports.sendLoginNotification = async (req, email, username, loginTime) => {
       : 'Invalid Date';
 
     const ipAddress = getClientIp(req);
-    let location = 'Unknown Location';
-
-    if (geoIpReader && ipAddress && ipAddress !== '::1' && ipAddress !== '127.0.0.1' && ipAddress !== 'localhost') {
-      try {
-        const geo = geoIpReader.get(ipAddress);
-        if (geo && geo.city && geo.country) {
-          location = `${geo.city.names.en || 'Unknown City'}, ${geo.subdivisions ? geo.subdivisions[0].iso_code : 'Unknown Region'}, ${geo.country.iso_code || 'Unknown Country'}`;
-        } else if (geo && geo.country) {
-          location = `Unknown City, Unknown Region, ${geo.country.iso_code}`;
-        }
-      } catch (error) {
-        logger.warn('GeoIP lookup failed for IP:', ipAddress, error.message);
-      }
-    } else if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
-      location = 'Local Environment';
-    }
+    const location = await getGeoLocationFromBigDataCloud(ipAddress); // Changed to BigDataCloud
 
     logger.info(`Attempting to send login notification to: ${email} for user: ${username}, IP: ${ipAddress}, Location: ${location}, Login Time: ${formattedTimeOfLogin}`);
 
@@ -341,7 +339,7 @@ exports.sendAccountDeletionConfirmation = async (req, email, username, deletionT
   try {
     // Rate limiting check for individual recipients
     if (shouldRateLimitRecipient(email)) {
-      logger.warn(`Rate limit exceeded for recipient: ${email}`);
+      logger.warn(`Rate limit exceeded for account deletion email to: ${email}`);
       return;
     }
 
