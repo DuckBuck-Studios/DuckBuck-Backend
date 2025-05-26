@@ -3,6 +3,9 @@ const logger = require('../utils/logger');
 const {Firestore} = require('@google-cloud/firestore');
 const {Storage} = require('@google-cloud/storage');
 const emailService = require('../services/email.service');
+const path = require('path'); // Added for GeoIP database path
+const fs = require('fs'); // Added
+const { Reader } = require('maxmind'); // Changed
 
 // Cache storage bucket names to reduce API calls
 const bucketCache = new Map();
@@ -210,6 +213,58 @@ exports.sendLoginNotificationHandler = async (req, res) => {
       ...(process.env.NODE_ENV !== 'production' && { error: error.message })
     });
   }
+};
+
+/**
+ * IP Debug Endpoint to check GeoIP lookup
+ * @route GET /api/users/ip-debug
+ * @access Protected - Requires API key
+ */
+exports.ipDebug = async (req, res) => {
+  // Check if IP Debug is enabled, especially in production
+  if (process.env.NODE_ENV === 'production' && process.env.IP_DEBUG_ENABLED !== 'true') {
+    logger.warn(`IP debug endpoint accessed in production while disabled. IP: ${req.ip}`);
+    return res.status(403).json({
+      success: false,
+      message: 'Forbidden: IP Debug is not enabled in this environment.'
+    });
+  }
+
+  const ipAddress = req.ip;
+  let location = 'Unknown';
+  let geoIpReader;
+
+  try {
+    // Path to the GeoLite2-City.mmdb file, located at the project root
+    const dbPath = path.join(__dirname, '../../GeoLite2-City.mmdb');
+    const dbBuffer = fs.readFileSync(dbPath); // Read DB into buffer
+    geoIpReader = new Reader(dbBuffer); // Pass buffer to Reader constructor
+  } catch (error) {
+    logger.error('Failed to load GeoIP database for IP debug. Location lookups will be unavailable.', error);
+    geoIpReader = null;
+  }
+
+  if (geoIpReader && ipAddress && ipAddress !== '::1' && ipAddress !== '127.0.0.1' && ipAddress !== 'localhost') {
+    try {
+      const geo = geoIpReader.get(ipAddress);
+      if (geo && geo.city && geo.country) {
+        location = `${geo.city.names.en || 'Unknown City'}, ${geo.subdivisions ? geo.subdivisions[0].iso_code : 'Unknown Region'}, ${geo.country.iso_code || 'Unknown Country'}`;
+      } else if (geo && geo.country) {
+        location = `Unknown City, Unknown Region, ${geo.country.iso_code}`;
+      }
+    } catch (error) {
+      logger.warn('GeoIP lookup failed for IP (debug):', ipAddress, error.message);
+    }
+  } else if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
+    location = 'Local Environment';
+  }
+
+  res.status(200).json({
+    success: true,
+    ipAddress,
+    location,
+    headers: req.headers // To see proxy headers if any
+  });
 };
 
 /**

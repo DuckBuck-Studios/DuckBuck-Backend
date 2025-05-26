@@ -1,14 +1,30 @@
-const nodemailer = require('nodemailer');
-const geoip = require('geoip-lite');
-const logger = require('../utils/logger');
-const fs = require('fs');
 const path = require('path');
+const nodemailer = require('nodemailer');
+const logger = require('../utils/logger');
 const { getClientIp } = require('../utils/ip-helper');
+const fs = require('fs'); // Added
+const { Reader } = require('maxmind'); 
 
 // Setup for email configuration
 // All email configuration should come from environment variables
 const PRIMARY_EMAIL = process.env.EMAIL_AUTH_ADDRESS;
 const SENDER_EMAIL = process.env.GMAIL_EMAIL;
+
+// Initialize MaxMind reader
+// IMPORTANT: Download the GeoLite2-City.mmdb database from MaxMind
+// and update the path below.
+// You can sign up for a free account at https://www.maxmind.com/en/geolite2/signup
+// and download the database from https://www.maxmind.com/en/accounts/current/geoip/downloads
+let geoIpReader;
+try {
+  // Path to the GeoLite2-City.mmdb file, located at the project root
+  const dbPath = path.join(__dirname, '../../GeoLite2-City.mmdb');
+  const dbBuffer = fs.readFileSync(dbPath); // Read DB into buffer
+  geoIpReader = new Reader(dbBuffer); // Pass buffer to Reader constructor
+} catch (error) {
+  logger.error('Failed to load GeoIP database. Location lookups will be unavailable.', error);
+  geoIpReader = null; // Ensure geoIpReader is null if loading fails
+}
 
 // Nodemailer transporter setup for Gmail/Google Workspace
 // For Gmail/Google Workspace, an "App Password" is required if 2FA is enabled
@@ -173,13 +189,23 @@ exports.sendWelcomeEmail = async (req, email, username) => {
     }
 
     const ipAddress = getClientIp(req);
-    // Don't use test IPs in production, but in development we can use a fallback
-    let lookupIp = ipAddress;
-    if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
-      lookupIp = process.env.NODE_ENV === 'production' ? ipAddress : '8.8.8.8';
+    let location = 'Unknown Location';
+
+    if (geoIpReader && ipAddress && ipAddress !== '::1' && ipAddress !== '127.0.0.1' && ipAddress !== 'localhost') {
+      try {
+        const geo = geoIpReader.get(ipAddress);
+        if (geo && geo.city && geo.country) {
+          location = `${geo.city.names.en || 'Unknown City'}, ${geo.subdivisions ? geo.subdivisions[0].iso_code : 'Unknown Region'}, ${geo.country.iso_code || 'Unknown Country'}`;
+        } else if (geo && geo.country) {
+          location = `Unknown City, Unknown Region, ${geo.country.iso_code}`;
+        }
+      } catch (error) {
+        logger.warn('GeoIP lookup failed for IP:', ipAddress, error.message);
+      }
+    } else if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
+      location = 'Local Environment';
     }
-    const geo = geoip.lookup(lookupIp);
-    const location = geo ? `${geo.city || 'Unknown City'}, ${geo.region || 'Unknown Region'}, ${geo.country || 'Unknown Country'}` : 'Unknown Location';
+
 
     logger.info(`Attempting to send welcome email to: ${email} for user: ${username} (UID: ${req.user ? req.user.uid : 'N/A'}), IP: ${ipAddress}, Location: ${location}`);
 
@@ -232,31 +258,36 @@ exports.sendLoginNotification = async (req, email, username, loginTime) => {
   try {
     // Rate limiting check for individual recipients
     if (shouldRateLimitRecipient(email)) {
-      logger.warn(`Rate limit exceeded for login notification to recipient: ${email}`);
+      logger.warn(`Rate limit exceeded for recipient: ${email}`);
       return;
     }
 
     // Format date nicely with AM/PM, whether it's passed in or generated now
     const dateToProcess = loginTime ? new Date(loginTime) : new Date();
-    const formattedTimeOfLogin = dateToProcess.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    // Validate the date before formatting
+    const formattedTimeOfLogin = (dateToProcess instanceof Date && !isNaN(dateToProcess))
+      ? dateToProcess.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+      : 'Invalid Date';
 
     const ipAddress = getClientIp(req);
-    // Don't use test IPs in production, but in development we can use a fallback
-    let lookupIp = ipAddress;
-    if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
-      lookupIp = process.env.NODE_ENV === 'production' ? ipAddress : '8.8.8.8';
-    }
-    const geo = geoip.lookup(lookupIp);
-    const location = geo ? `${geo.city || 'Unknown City'}, ${geo.region || 'Unknown Region'}, ${geo.country || 'Unknown Country'}` : 'Unknown Location';
+    let location = 'Unknown Location';
 
-    logger.info(`Attempting to send login notification to: ${email} for user: ${username} (UID: ${req.user ? req.user.uid : 'N/A'}) at ${formattedTimeOfLogin}, IP: ${ipAddress}, Location: ${location}`);
+    if (geoIpReader && ipAddress && ipAddress !== '::1' && ipAddress !== '127.0.0.1' && ipAddress !== 'localhost') {
+      try {
+        const geo = geoIpReader.get(ipAddress);
+        if (geo && geo.city && geo.country) {
+          location = `${geo.city.names.en || 'Unknown City'}, ${geo.subdivisions ? geo.subdivisions[0].iso_code : 'Unknown Region'}, ${geo.country.iso_code || 'Unknown Country'}`;
+        } else if (geo && geo.country) {
+          location = `Unknown City, Unknown Region, ${geo.country.iso_code}`;
+        }
+      } catch (error) {
+        logger.warn('GeoIP lookup failed for IP:', ipAddress, error.message);
+      }
+    } else if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
+      location = 'Local Environment';
+    }
+
+    logger.info(`Attempting to send login notification to: ${email} for user: ${username}, IP: ${ipAddress}, Location: ${location}, Login Time: ${formattedTimeOfLogin}`);
 
     const htmlContent = getEmailHtml('login-notification', {
       username,
@@ -308,29 +339,36 @@ exports.sendLoginNotification = async (req, email, username, loginTime) => {
  */
 exports.sendAccountDeletionConfirmation = async (req, email, username, deletionTime) => {
   try {
-    // Don't rate limit account deletion notifications as they are critical security emails
-    
-    // Format date nicely with AM/PM, whether it's passed in or generated now
+    // Rate limiting check for individual recipients
+    if (shouldRateLimitRecipient(email)) {
+      logger.warn(`Rate limit exceeded for recipient: ${email}`);
+      return;
+    }
+
     const dateToProcess = deletionTime ? new Date(deletionTime) : new Date();
-    const formattedTimeOfDeletion = dateToProcess.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    const formattedTimeOfDeletion = (dateToProcess instanceof Date && !isNaN(dateToProcess))
+      ? dateToProcess.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+      : 'Invalid Date';
 
     const ipAddress = getClientIp(req);
-    // Don't use test IPs in production, but in development we can use a fallback
-    let lookupIp = ipAddress;
-    if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
-      lookupIp = process.env.NODE_ENV === 'production' ? ipAddress : '8.8.8.8';
-    }
-    const geo = geoip.lookup(lookupIp);
-    const location = geo ? `${geo.city || 'Unknown City'}, ${geo.region || 'Unknown Region'}, ${geo.country || 'Unknown Country'}` : 'Unknown Location';
+    let location = 'Unknown Location';
 
-    logger.info(`Sending account deletion confirmation to: ${email} for user: ${username} at ${formattedTimeOfDeletion}, IP: ${ipAddress}, Location: ${location}`);
+    if (geoIpReader && ipAddress && ipAddress !== '::1' && ipAddress !== '127.0.0.1' && ipAddress !== 'localhost') {
+      try {
+        const geo = geoIpReader.get(ipAddress);
+        if (geo && geo.city && geo.country) {
+          location = `${geo.city.names.en || 'Unknown City'}, ${geo.subdivisions ? geo.subdivisions[0].iso_code : 'Unknown Region'}, ${geo.country.iso_code || 'Unknown Country'}`;
+        } else if (geo && geo.country) {
+          location = `Unknown City, Unknown Region, ${geo.country.iso_code}`;
+        }
+      } catch (error) {
+        logger.warn('GeoIP lookup failed for IP:', ipAddress, error.message);
+      }
+    } else if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
+      location = 'Local Environment';
+    }
+
+    logger.info(`Attempting to send account deletion confirmation to: ${email} for user: ${username}, IP: ${ipAddress}, Location: ${location}, Deletion Time: ${formattedTimeOfDeletion}`);
 
     const htmlContent = getEmailHtml('account-deletion', {
       username,

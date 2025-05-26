@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
-const { deleteUser, sendWelcomeEmailHandler, sendLoginNotificationHandler } = require('../controllers/user.controller');
+const { deleteUser, sendWelcomeEmailHandler, sendLoginNotificationHandler, ipDebug } = require('../controllers/user.controller');
 const securityMiddleware = require('../middlewares/security.middleware');
 const firebaseAuthMiddleware = require('../middlewares/firebase-auth.middleware');
 const apiKeyAuth = require('../middlewares/api-key-auth');
@@ -238,6 +238,13 @@ router.post(
     
     next();
   }
+);
+
+// New IP Debug Route
+router.get(
+  '/ip-debug',
+  apiKeyAuth, // Protect with API key only
+  ipDebug
 );
 
 module.exports = router;
