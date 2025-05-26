@@ -46,7 +46,7 @@ const getGeoLocationFromBigDataCloud = async (ipAddress) => {
   }
 
   try {
-    const url = `https://api.bigdatacloud.net/data/ip-geolocation?ip=${ipAddress}&key=${apiKey}`;
+    const url = `https://api.bigdatacloud.net/data/ip-geolocation?ip=${ipAddress}&key=${apiKey}&localityLanguage=en`; // Added localityLanguage=en
     const response = await fetch(url);
     if (!response.ok) {
       const errorText = await response.text();
@@ -56,16 +56,28 @@ const getGeoLocationFromBigDataCloud = async (ipAddress) => {
     const data = await response.json();
     
     let locationParts = [];
-    if (data.city) locationParts.push(data.city);
-    if (data.location && data.location.principalSubdivision) locationParts.push(data.location.principalSubdivision);
-    if (data.country && data.country.name) locationParts.push(data.country.name);
+    // Prioritize localityName, then city
+    if (data.location && data.location.localityName) {
+      locationParts.push(data.location.localityName);
+    } else if (data.city) {
+      locationParts.push(data.city);
+    }
+
+    if (data.location && data.location.principalSubdivision) {
+      locationParts.push(data.location.principalSubdivision);
+    }
+    if (data.country && data.country.name) {
+      locationParts.push(data.country.name);
+    }
     
     if (locationParts.length > 0) {
       return locationParts.join(', ');
     } else {
       logger.warn(`BigDataCloud returned no specific location details for IP ${ipAddress}. Response: ${JSON.stringify(data)}`);
       // Fallback to country name if available and other parts are missing
-      if (data.country && data.country.name) return data.country.name;
+      if (data.country && data.country.name) {
+        return data.country.name; // Return only country name if other details are sparse
+      }
       return 'Location details not found';
     }
   } catch (error) {
@@ -97,13 +109,12 @@ const getEmailHtml = (templateName, data) => {
     } else if (templateName === 'login-notification') {
       htmlContent = htmlContent.replace(/{{username}}/g, data.username || 'User')
                               .replace(/{{loginTime}}/g, data.loginTime || 'N/A')
-                              .replace(/{{loginIp}}/g, data.ipAddress || 'N/A')
-                              .replace(/{{loginLocation}}/g, data.location || 'N/A');
+                              .replace(/{{loginIp}}/g, data.ipAddress || 'N/A') // Ensure this placeholder matches the template
+                              .replace(/{{loginLocation}}/g, data.location || 'N/A'); // Ensure this placeholder matches the template
     } else if (templateName === 'account-deletion') {
       htmlContent = htmlContent.replace(/{{username}}/g, data.username || 'User')
-                              .replace(/{{deletionTime}}/g, data.deletionTime || 'N/A')
-                              .replace(/{{ipAddress}}/g, data.ipAddress || 'N/A')
-                              .replace(/{{location}}/g, data.location || 'N/A');
+                              .replace(/{{deletionTime}}/g, data.deletionTime || 'N/A');
+                              // Removed ipAddress and location replacement
     }
     
     return htmlContent;
@@ -145,8 +156,6 @@ const getEmailHtml = (templateName, data) => {
         <p>Deletion details:</p>
         <ul>
           <li>Deletion Time: ${data.deletionTime || 'N/A'}</li>
-          <li>IP Address: ${data.ipAddress || 'N/A'}</li>
-          <li>Approximate Location: ${data.location || 'N/A'}</li>
         </ul>
         <p>If you did not request this deletion, please contact support immediately.</p>
         ${commonFooter}
@@ -339,7 +348,7 @@ exports.sendAccountDeletionConfirmation = async (req, email, username, deletionT
   try {
     // Rate limiting check for individual recipients
     if (shouldRateLimitRecipient(email)) {
-      logger.warn(`Rate limit exceeded for account deletion email to: ${email}`);
+      logger.warn(`Rate limit exceeded for account deletion confirmation to: ${email}`);
       return;
     }
 
@@ -348,31 +357,16 @@ exports.sendAccountDeletionConfirmation = async (req, email, username, deletionT
       ? dateToProcess.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
       : 'Invalid Date';
 
-    const ipAddress = getClientIp(req);
-    let location = 'Unknown Location';
+    // Removed IP address and location fetching
+    // const ipAddress = getClientIp(req);
+    // const location = await getGeoLocationFromBigDataCloud(ipAddress);
 
-    if (geoIpReader && ipAddress && ipAddress !== '::1' && ipAddress !== '127.0.0.1' && ipAddress !== 'localhost') {
-      try {
-        const geo = geoIpReader.get(ipAddress);
-        if (geo && geo.city && geo.country) {
-          location = `${geo.city.names.en || 'Unknown City'}, ${geo.subdivisions ? geo.subdivisions[0].iso_code : 'Unknown Region'}, ${geo.country.iso_code || 'Unknown Country'}`;
-        } else if (geo && geo.country) {
-          location = `Unknown City, Unknown Region, ${geo.country.iso_code}`;
-        }
-      } catch (error) {
-        logger.warn('GeoIP lookup failed for IP:', ipAddress, error.message);
-      }
-    } else if (ipAddress === '::1' || ipAddress === '127.0.0.1' || ipAddress === 'localhost') {
-      location = 'Local Environment';
-    }
-
-    logger.info(`Attempting to send account deletion confirmation to: ${email} for user: ${username}, IP: ${ipAddress}, Location: ${location}, Deletion Time: ${formattedTimeOfDeletion}`);
+    logger.info(`Attempting to send account deletion confirmation to: ${email} for user: ${username}, Deletion Time: ${formattedTimeOfDeletion}`);
 
     const htmlContent = getEmailHtml('account-deletion', {
       username,
-      deletionTime: formattedTimeOfDeletion,
-      ipAddress,
-      location
+      deletionTime: formattedTimeOfDeletion
+      // Removed ipAddress and location
     });
 
     const mailOptions = {
