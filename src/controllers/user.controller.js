@@ -222,7 +222,7 @@ exports.sendLoginNotificationHandler = async (req, res) => {
  */
 exports.ipDebug = async (req, res) => {
   // Check if IP Debug is enabled, especially in production
-  if (process.env.NODE_ENV === 'production' && process.env.IP_DEBUG_ENABLED !== 'true') {
+  if (process.env.NODE_ENV === 'production' && process.env.DEBUG_IP !== 'true') {
     logger.warn(`IP debug endpoint accessed in production while disabled. IP: ${req.ip}`);
     return res.status(403).json({
       success: false,
