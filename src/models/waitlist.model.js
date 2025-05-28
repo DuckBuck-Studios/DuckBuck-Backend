@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { DATABASE_CONFIG } = require('../config/constants');
 const validator = require('validator');
 
 /**
@@ -22,7 +23,7 @@ const waitlistSchema = new mongoose.Schema({
   }
 }, { 
   timestamps: true,
-  collection: process.env.WAITLIST_COLLECTION_NAME || 'waitlist'
+  collection: DATABASE_CONFIG.COLLECTIONS.WAITLIST
 });
 
 module.exports = mongoose.model('Waitlist', waitlistSchema);

@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 const { getClientIp } = require('../utils/ip-helper');
 const fs = require('fs'); // fs is still used by getEmailHtml
 const fetch = require('node-fetch'); // Added for BigDataCloud
+const { EMAIL_CONFIG } = require('../config/constants');
 
 // Setup for email configuration
 // All email configuration should come from environment variables
@@ -14,9 +15,9 @@ const SENDER_EMAIL = process.env.GMAIL_EMAIL;
 // For Gmail/Google Workspace, an "App Password" is required if 2FA is enabled
 // See: https://support.google.com/accounts/answer/185833
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: parseInt(process.env.EMAIL_PORT),
-  secure: process.env.EMAIL_SECURE,
+  host: EMAIL_CONFIG.HOST,
+  port: EMAIL_CONFIG.PORT,
+  secure: EMAIL_CONFIG.SECURE,
   auth: {
     user: PRIMARY_EMAIL, // Authentication email address
     pass: process.env.GMAIL_APP_PASSWORD, // App Password from .env

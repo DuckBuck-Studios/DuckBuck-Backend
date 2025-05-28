@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { DATABASE_CONFIG } = require('../config/constants');
 const { isEmail } = require('validator');
 
 const messageSchema = new mongoose.Schema({
@@ -28,7 +29,7 @@ const messageSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  collection: process.env.MESSAGE_COLLECTION_NAME || 'messages'
+  collection: DATABASE_CONFIG.COLLECTIONS.MESSAGES
 });
 
 // Index for searching and optimized lookups

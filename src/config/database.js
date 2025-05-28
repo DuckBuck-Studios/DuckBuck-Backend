@@ -1,17 +1,18 @@
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
+const { DATABASE_CONFIG } = require('./constants');
 
 /**
  * MongoDB connection options with updated configuration for current Mongoose version
  */
 const mongoOptions = {
   // Remove deprecated options: useNewUrlParser, useUnifiedTopology, keepAlive, keepAliveInitialDelay
-  maxPoolSize: process.env.MONGO_CONNECTION_POOL_SIZE,
+  maxPoolSize: DATABASE_CONFIG.CONNECTION_POOL_SIZE,
   serverSelectionTimeoutMS: 5000, // Server selection timeout
   socketTimeoutMS: 45000,  
   family: 4,  
   autoIndex: process.env.NODE_ENV, 
-  dbName: process.env.MONGO_DB_NAME 
+  dbName: DATABASE_CONFIG.DB_NAME 
 };
 
 /**
@@ -25,7 +26,7 @@ const connectDB = async () => {
 
     // Connection success handler
     mongoose.connection.on('connected', () => {
-      logger.info(`MongoDB Connected to database: ${process.env.MONGO_DB_NAME || 'DuckBuck'} at host: ${conn.connection.host}`);
+      logger.info(`MongoDB Connected to database: ${DATABASE_CONFIG.DB_NAME} at host: ${conn.connection.host}`);
     });
 
     // Connection error handler

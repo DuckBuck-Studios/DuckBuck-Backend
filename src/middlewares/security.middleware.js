@@ -1,4 +1,5 @@
 const logger = require('../utils/logger');
+const { SECURITY_CONFIG } = require('../config/constants');
 
 // Track failed requests by IP to detect potential attacks
 const failedRequestTracker = {
@@ -8,8 +9,8 @@ const failedRequestTracker = {
   // Record failed attempt for an IP
   recordFailure(ip) {
     const now = Date.now();
-    const threshold = parseInt(process.env.IP_BLACKLIST_THRESHOLD || 100);
-    const window = parseInt(process.env.IP_BLACKLIST_WINDOW_MS || 3600000); // 1 hour default
+    const threshold = SECURITY_CONFIG.IP_BLACKLIST.THRESHOLD;
+    const window = SECURITY_CONFIG.IP_BLACKLIST.WINDOW_MS;
     
     if (!this.ipLog.has(ip)) {
       this.ipLog.set(ip, []);
@@ -38,7 +39,7 @@ const failedRequestTracker = {
   // Clean up stale entries periodically
   cleanup() {
     const now = Date.now();
-    const window = parseInt(process.env.IP_BLACKLIST_WINDOW_MS || 3600000);
+    const window = SECURITY_CONFIG.IP_BLACKLIST.WINDOW_MS;
     
     for (const [ip, attempts] of this.ipLog.entries()) {
       // Remove attempts older than the window
@@ -81,9 +82,8 @@ const securityMiddleware = (req, res, next) => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     
-    // Set Content-Security-Policy from environment if available
-    const cspDirectives = process.env.CSP_DIRECTIVES || "default-src 'self'";
-    res.setHeader('Content-Security-Policy', cspDirectives);
+    // Set Content-Security-Policy from configuration
+    res.setHeader('Content-Security-Policy', SECURITY_CONFIG.CSP_DIRECTIVES);
     
     // Add Permissions-Policy header to limit features
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');

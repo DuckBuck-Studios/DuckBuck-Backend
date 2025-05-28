@@ -24,7 +24,7 @@ const apiKeyAuth = (req, res, next) => {
     // Validate API key using timing-safe comparison to prevent timing attacks
     const isValid = crypto.timingSafeEqual(
       Buffer.from(apiKey),
-      Buffer.from(process.env.API_KEY || '')
+      Buffer.from(process.env.DUCKBUCK_API_KEY)
     );
     
     if (!isValid) {
