@@ -4,6 +4,7 @@ const admin = require('firebase-admin');
 const logger = require('../utils/logger');
 const checkDiskSpace = require('check-disk-space').default;
 const { networkInterfaces } = require('os');
+const { SECURITY_CONFIG } = require('../config/constants');
 
 /**
  * Comprehensive health check service
@@ -417,7 +418,7 @@ class HealthService {
         cloudInfo.network = this.getNetworkInfo();
         
         // Check if request timeout is configured appropriately for Cloud Run
-        const requestTimeout = parseInt(process.env.REQUEST_TIMEOUT_MS || 30000);
+        const requestTimeout = SECURITY_CONFIG.REQUEST_TIMEOUT_MS;
         cloudInfo.timeoutConfig = {
           requestTimeoutMs: requestTimeout,
           optimal: requestTimeout <= 60000,

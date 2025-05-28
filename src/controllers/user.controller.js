@@ -5,6 +5,7 @@ const {Storage} = require('@google-cloud/storage');
 const emailService = require('../services/email.service');
 const { getClientIp } = require('../utils/ip-helper');
 const fetch = require('node-fetch'); // Added for BigDataCloud
+const { LOGGING_CONFIG } = require('../config/constants');
 
 // Cache storage bucket names to reduce API calls
 const bucketCache = new Map();
@@ -221,7 +222,7 @@ exports.sendLoginNotificationHandler = async (req, res) => {
  */
 exports.ipDebug = async (req, res) => {
   // Check if IP Debug is enabled, especially in production
-  if (process.env.NODE_ENV === 'production' && process.env.DEBUG_IP !== 'true') {
+  if (process.env.NODE_ENV === 'production' && !LOGGING_CONFIG.DEBUG_IP) {
     logger.warn(`IP debug endpoint accessed in production while disabled. IP: ${getClientIp(req)}`);
     return res.status(403).json({
       success: false,

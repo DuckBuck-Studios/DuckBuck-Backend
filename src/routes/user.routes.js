@@ -7,9 +7,9 @@ const firebaseAuthMiddleware = require('../middlewares/firebase-auth.middleware'
 const apiKeyAuth = require('../middlewares/api-key-auth');
 const logger = require('../utils/logger');
 const { validateSchema, schemas } = require('../middlewares/validate-schema');
+const { SECURITY_CONFIG, RATE_LIMITING, DEVELOPMENT_CONFIG } = require('../config/constants');
 
 // Constants for configurations
-const DEFAULT_REQUEST_TIMEOUT_MS = 30000;  // 30 seconds
 const DEFAULT_USER_RATE_LIMIT = 10;             // 10 requests per hour
 const USER_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const DEFAULT_EMAIL_RATE_LIMIT = 5;
@@ -22,7 +22,7 @@ const IP_DEBUG_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
  * Particularly important for Cloud Run which has request timeouts
  */
 const requestTimeout = (req, res, next) => {
-  const timeoutMs = parseInt(process.env.REQUEST_TIMEOUT_MS || DEFAULT_REQUEST_TIMEOUT_MS);
+  const timeoutMs = SECURITY_CONFIG.REQUEST_TIMEOUT_MS;
   
   // Set up the timeout handler
   const timeoutId = setTimeout(() => {
@@ -81,7 +81,7 @@ const userRateLimiter = rateLimit({
     }
   },
   // Skip in development unless explicitly enabled
-  skip: (req) => process.env.NODE_ENV !== 'production' && !process.env.ENABLE_RATE_LIMIT_IN_DEV
+  skip: (req) => process.env.NODE_ENV !== 'production' && !DEVELOPMENT_CONFIG.ENABLE_RATE_LIMIT_IN_DEV
 });
 
 /**

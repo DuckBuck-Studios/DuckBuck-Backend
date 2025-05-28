@@ -7,10 +7,11 @@ const securityMiddleware = require('../middlewares/security.middleware');
 const apiKeyAuth = require('../middlewares/api-key-auth');
 const { validateSchema, schemas } = require('../middlewares/validate-schema');
 const logger = require('../utils/logger');
+const { SECURITY_CONFIG, RATE_LIMITING } = require('../config/constants');
 
 // Request timeout middleware
 const requestTimeout = (req, res, next) => {
-  const timeoutMs = parseInt(process.env.REQUEST_TIMEOUT_MS || 30000);
+  const timeoutMs = SECURITY_CONFIG.REQUEST_TIMEOUT_MS;
   res.setTimeout(timeoutMs, () => {
     logger.warn(`Request timeout after ${timeoutMs}ms for ${req.originalUrl}`);
     res.status(408).json({
@@ -23,8 +24,8 @@ const requestTimeout = (req, res, next) => {
 
 // Stricter rate limiting specific to the waitlist endpoint
 const waitlistRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour window
-  max: process.env.WAITLIST_RATE_LIMIT || 5, // limit each IP to 5 requests per windowMs (configurable)
+  windowMs: RATE_LIMITING.WAITLIST.WINDOW_MS,
+  max: RATE_LIMITING.WAITLIST.LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false, // Count successful requests

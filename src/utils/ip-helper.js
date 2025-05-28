@@ -4,6 +4,7 @@
  * - Works with both IPv4 and IPv6 addresses
  */
 const logger = require('./logger');
+const { LOGGING_CONFIG } = require('../config/constants');
 
 /**
  * Extract the real client IP from request
@@ -14,7 +15,7 @@ const logger = require('./logger');
 const getClientIp = (req) => {
   try {
     // Log relevant headers for debugging in Google Cloud Run
-    if (process.env.NODE_ENV === 'development' || process.env.DEBUG_IP === 'true') {
+    if (process.env.NODE_ENV === 'development' || LOGGING_CONFIG.DEBUG_IP) {
       logger.debug(`IP Helper - Headers: x-forwarded-for: ${req.headers['x-forwarded-for'] || 'none'}, ` +
                  `x-real-ip: ${req.headers['x-real-ip'] || 'none'}, ` + 
                  `cf-connecting-ip: ${req.headers['cf-connecting-ip'] || 'none'}, ` +

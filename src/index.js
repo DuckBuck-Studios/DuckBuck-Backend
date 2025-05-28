@@ -13,6 +13,7 @@ const compression = require('compression');
 const connectDB = require('./config/database');
 const logger = require('./utils/logger');
 const httpsRedirect = require('./middlewares/https-redirect');
+const { SECURITY_CONFIG, RATE_LIMITING } = require('./config/constants');
 
 // Initialize Express app
 const app = express();
@@ -22,11 +23,11 @@ const PORT = process.env.PORT || 8080;
 connectDB();
 
 // Trust proxies if behind a load balancer or on Google Cloud Run
-if (process.env.TRUST_PROXY === 'true' || 
+if (SECURITY_CONFIG.TRUST_PROXY || 
     process.env.K_SERVICE || // Google Cloud Run environment variable
     process.env.GOOGLE_CLOUD_PROJECT) {
   // Trust first proxy, or multiple proxies if specified
-  const proxyCount = parseInt(process.env.PROXY_COUNT || '1');
+  const proxyCount = SECURITY_CONFIG.PROXY_COUNT;
   
   // Cloud Run requires trusting at least one proxy
   logger.info(`Setting trust proxy to: ${proxyCount}`);
@@ -38,7 +39,7 @@ app.use(httpsRedirect);
 
 // Request timeout for all requests
 app.use((req, res, next) => {
-  const timeoutMs = parseInt(process.env.REQUEST_TIMEOUT_MS || 30000);
+  const timeoutMs = SECURITY_CONFIG.REQUEST_TIMEOUT_MS;
   res.setTimeout(timeoutMs, () => {
     logger.warn(`Global request timeout after ${timeoutMs}ms for ${req.originalUrl}`);
     if (!res.headersSent) {
@@ -119,8 +120,8 @@ if (process.env.NODE_ENV === 'development') {
 
 // Global rate limiting
 const limiter = rateLimit({
-  windowMs: process.env.API_RATE_WINDOW_MS || 15 * 60 * 1000,
-  max: process.env.API_RATE_LIMIT || 100,
+  windowMs: RATE_LIMITING.API.WINDOW_MS,
+  max: RATE_LIMITING.API.LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
