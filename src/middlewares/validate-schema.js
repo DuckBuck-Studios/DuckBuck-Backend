@@ -187,7 +187,76 @@ const schemas = {
     loginTime: Joi.string()
       .max(100)
       .optional()
+  }),
+
+  // Schema for sending FCM notifications (for notification.routes.js)
+  sendNotificationSchema: Joi.object({
+    // Either uid or recipientUid is required, but not both
+    uid: Joi.string().optional(),
+    recipientUid: Joi.string().optional(),
+    
+    // Title is optional and can be empty
+    title: Joi.string().allow('', null).optional(),
+    
+    // Body is required
+    body: Joi.string().required(),
+    
+    // Data can be any type
+    data: Joi.any().optional()
   })
+  .custom((value, helpers) => {
+    // Ensure at least one of uid or recipientUid is provided
+    if (!value.uid && !value.recipientUid) {
+      return helpers.error('object.missing', { 
+        message: 'Either uid or recipientUid must be provided' 
+      });
+    }
+    return value;
+  })
+  .unknown(true), // Allow unknown fields in the request
+
+  // Schema for sending data-only FCM notifications (for notification.routes.js)
+  sendDataOnlyNotificationSchema: Joi.object({
+    uid: Joi.string()
+      .min(1)
+      .max(128)
+      .optional()
+      .messages({
+        'string.empty': 'UID cannot be empty',
+        'string.min': 'UID must be at least 1 character long',
+        'string.max': 'UID must be at most 128 characters long'
+      }),
+    // Also accept recipientUid as an alias for uid
+    recipientUid: Joi.string()
+      .min(1)
+      .max(128)
+      .optional()
+      .messages({
+        'string.empty': 'Recipient UID cannot be empty',
+        'string.min': 'Recipient UID must be at least 1 character long',
+        'string.max': 'Recipient UID must be at most 128 characters long'
+      }),
+    data: Joi.alternatives()
+      .try(
+        Joi.object().unknown(true),
+        Joi.string(),
+        Joi.array()
+      )
+      .required()
+      .messages({
+        'any.required': 'Data is required for data-only notifications'
+      })
+  })
+  .custom((value, helpers) => {
+    // Ensure at least one of uid or recipientUid is provided
+    if (!value.uid && !value.recipientUid) {
+      return helpers.error('object.missing', { 
+        message: 'Either uid or recipientUid must be provided' 
+      });
+    }
+    return value;
+  })
+  .unknown(true)
 };
 
 module.exports = {
