@@ -175,6 +175,9 @@ app.use('/api/waitlist', require('./routes/waitlist.routes'));
 app.use('/api/contact', require('./routes/message.routes'));
 app.use('/api/health', require('./routes/health.routes'));
 app.use('/api/users', require('./routes/user.routes'));
+app.use('/api/notifications', require('./routes/notification.routes'));
+app.use('/api/notifications', require('./routes/notification.routes'));
+app.use('/api/notifications', require('./routes/notification.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
