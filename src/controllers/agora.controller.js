@@ -13,20 +13,7 @@ exports.generateAgoraToken = async (req, res, next) => {
   try {
     const { uid, channelId } = req.body;
 
-    // Validate required fields
-    if (!uid) {
-      return res.status(400).json({
-        success: false,
-        message: 'UID is required'
-      });
-    }
-
-    if (!channelId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Channel ID is required'
-      });
-    }
+    // Note: Basic validation already handled by validateSchema middleware
 
     // Validate Agora configuration
     const appId = process.env.AGORA_APP_ID;
