@@ -1,5 +1,4 @@
 const os = require('os');
-const mongoose = require('mongoose');
 const admin = require('firebase-admin');
 const logger = require('../utils/logger');
 const checkDiskSpace = require('check-disk-space').default;
@@ -107,69 +106,50 @@ class HealthService {
   }
 
   /**
-   * Check MongoDB database health
+   * Check Firestore database health (replacing MongoDB)
    * @returns {Object} Database health status
    */
   async checkDatabaseHealth() {
     try {
-      // Check connection state
-      const connectionState = mongoose.connection.readyState;
-      const statusMap = {
-        0: 'disconnected',
-        1: 'connected',
-        2: 'connecting',
-        3: 'disconnecting',
-        4: 'invalid'
-      };
+      // Check if Firebase is initialized (which includes Firestore)
+      const isInitialized = admin.apps.length > 0;
       
-      const status = statusMap[connectionState] || 'unknown';
-      const isHealthy = connectionState === 1;
-
-      let dbInfo = {
-        status,
-        healthy: isHealthy,
-        name: mongoose.connection.name || 'unknown'
-      };
-
-      // Only run additional checks if connected
-      if (isHealthy) {
-        try {
-          // Simple ping to verify responsiveness
-          const adminDb = mongoose.connection.db.admin();
-          const pingResult = await adminDb.ping();
-          
-          // Get server stats if authorized
-          let serverStatus = null;
-          try {
-            serverStatus = await adminDb.serverStatus();
-          } catch (error) {
-            // Might fail due to permissions, that's okay
-          }
-
-          dbInfo = {
-            ...dbInfo,
-            ping: pingResult.ok === 1 ? 'success' : 'failed',
-            version: serverStatus ? serverStatus.version : 'unknown',
-            connections: serverStatus ? {
-              current: serverStatus.connections.current,
-              available: serverStatus.connections.available,
-              totalCreated: serverStatus.connections.totalCreated
-            } : 'unavailable',
-            host: mongoose.connection.host
-          };
-        } catch (error) {
-          dbInfo.adminStatus = 'unavailable';
-          dbInfo.adminError = process.env.NODE_ENV === 'production' ? 
-            'Admin operations not permitted' : error.message;
-        }
+      if (!isInitialized) {
+        return {
+          status: 'not_initialized',
+          healthy: false,
+          type: 'firestore'
+        };
       }
 
-      return dbInfo;
+      // Test Firestore connectivity with a simple operation
+      try {
+        const db = admin.firestore();
+        // Try to get a dummy document reference (doesn't need to exist)
+        const testRef = db.collection('_health_check').doc('test');
+        await testRef.get(); // This will test connectivity even if doc doesn't exist
+        
+        return {
+          status: 'connected',
+          healthy: true,
+          type: 'firestore',
+          name: 'firestore'
+        };
+      } catch (error) {
+        return {
+          status: 'connection_failed',
+          healthy: false,
+          type: 'firestore',
+          error: process.env.NODE_ENV === 'production' ? 
+            'Firestore connection failed' : error.message
+        };
+      }
     } catch (error) {
       logger.error('Database health check failed:', error);
       return {
         status: 'error',
         healthy: false,
+        type: 'firestore',
         error: process.env.NODE_ENV === 'production' ? 
           'Database health check failed' : error.message
       };
