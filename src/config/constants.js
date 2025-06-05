@@ -3,30 +3,11 @@
  * This file contains hardcoded configuration values that don't need to change between environments
  */
 
-// Database Configuration
-const DATABASE_CONFIG = {
-  DB_NAME: 'DuckBuck',
-  CONNECTION_POOL_SIZE: 20,
-  RETRY_WRITES: true,
-  COLLECTIONS: {
-    WAITLIST: 'waitlist',
-    MESSAGES: 'messages'
-  }
-};
-
 // Rate Limiting Configuration
 const RATE_LIMITING = {
   API: {
     LIMIT: 50,
     WINDOW_MS: 900000 // 15 minutes
-  },
-  WAITLIST: {
-    LIMIT: 3,
-    WINDOW_MS: 3600000 // 1 hour
-  },
-  MESSAGE: {
-    LIMIT: 2,
-    WINDOW_MS: 3600000 // 1 hour
   },
   EMAIL: {
     LIMIT: 10,
@@ -67,7 +48,6 @@ const DEVELOPMENT_CONFIG = {
 };
 
 module.exports = {
-  DATABASE_CONFIG,
   RATE_LIMITING,
   SECURITY_CONFIG,
   EMAIL_CONFIG,

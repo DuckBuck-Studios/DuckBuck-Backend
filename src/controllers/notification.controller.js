@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const logger = require('../utils/logger');
 const {Firestore} = require('@google-cloud/firestore');
+const { generateAgoraTokenForNotification } = require('./agora.controller');
 
 // Cached Firestore client instance for duckbuck database only
 let duckbuckFirestoreClient = null;
@@ -53,12 +54,14 @@ const getFCMTokenForUser = async (uid) => {
     try {
       const firestore = getFirestoreClient(projectId, serviceAccount);
       const userRef = firestore.collection('users').doc(uid);
+      
+      // Only fetch FCM token related fields to reduce bandwidth
       const doc = await userRef.get();
       
       if (doc.exists) {
         const userData = doc.data();
         
-        // Access the token from fcmTokenData as shown in the screenshot
+        // Access the token from fcmTokenData structure
         if (userData.fcmTokenData && userData.fcmTokenData.token) {
           const platform = userData.fcmTokenData.platform || 'unknown';
           logger.info(`FCM token found for user ${uid} on platform ${platform}`);
@@ -280,21 +283,54 @@ exports.sendDataOnlyNotification = async (req, res, next) => {
     }
 
     // Prepare data-only payload with high priority
+    // Add server-side timestamps to the data payload
+    const currentTimestamp = Date.now();
+    let enrichedData = {
+      ...data,
+      type: 'data_only',
+      timestamp: currentTimestamp.toString(), // Unix timestamp in milliseconds
+      timestampISO: new Date(currentTimestamp).toISOString(), // ISO 8601 timestamp
+      serverTimestamp: currentTimestamp.toString(), // Explicit server timestamp
+      priority: 'high' // Add priority to the data payload for Flutter/Android
+    };
+
+    // Check if this is an invite notification and generate Agora token if needed
+    if (data.type === 'invite' && data.agora_channelid && data.call_name && data.caller_photo) {
+      logger.info(`Generating Agora token for invite notification to user ${userUid}`);
+      
+      const agoraTokenData = await generateAgoraTokenForNotification(
+        userUid,
+        data.agora_channelid,
+        data.caller_photo,
+        data.call_name
+      );
+      
+      if (agoraTokenData) {
+        // Merge Agora token data into the enriched data
+        enrichedData = {
+          ...enrichedData,
+          ...agoraTokenData
+        };
+        
+        logger.info(`Agora token successfully added to invite notification for user ${userUid}`, {
+          channelId: data.agora_channelid,
+          agoraUid: agoraTokenData.agora_uid
+        });
+      } else {
+        logger.warn(`Failed to generate Agora token for invite notification to user ${userUid}`);
+        // Continue with notification even if Agora token generation fails
+      }
+    }
+
     const message = {
       token: fcmToken,
-      data: {
-        ...data,
-        type: 'data_only',
-        timestamp: Date.now().toString(),
-        priority: 'high' // Add priority to the data payload for Flutter/Android
-      },
+      data: enrichedData,
       android: {
         priority: 'high',
         ttl: 0, // Deliver immediately
         directBootOk: true, // Deliver in direct boot mode if possible
         data: {
-          ...data,
-          priority: 'high',
+          ...enrichedData, // Use the enriched data with timestamps
           click_action: 'FLUTTER_NOTIFICATION_CLICK'
         }
       },

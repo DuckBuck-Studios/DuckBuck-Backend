@@ -7,10 +7,8 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss-clean');
-const mongoSanitize = require('express-mongo-sanitize');
 const hpp = require('hpp');
 const compression = require('compression');
-const connectDB = require('./config/database');
 const logger = require('./utils/logger');
 const httpsRedirect = require('./middlewares/https-redirect');
 const { SECURITY_CONFIG, RATE_LIMITING } = require('./config/constants');
@@ -18,9 +16,6 @@ const { SECURITY_CONFIG, RATE_LIMITING } = require('./config/constants');
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 8080;
-
-// Connect to MongoDB
-connectDB();
 
 // Trust proxies if behind a load balancer or on Google Cloud Run
 if (SECURITY_CONFIG.TRUST_PROXY || 
@@ -89,7 +84,6 @@ app.use(helmet({
   xssFilter: true
 })); // Set security headers
 app.use(xss()); // Prevent XSS attacks
-app.use(mongoSanitize()); // Prevent MongoDB injection
 app.use(hpp()); // Prevent HTTP Parameter Pollution
 
 // Standard middleware
@@ -171,13 +165,10 @@ app.get('/', rootRateLimiter, (req, res) => {
 });
 
 // Routes
-app.use('/api/waitlist', require('./routes/waitlist.routes'));
-app.use('/api/contact', require('./routes/message.routes'));
 app.use('/api/health', require('./routes/health.routes'));
 app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
-app.use('/api/notifications', require('./routes/notification.routes'));
-app.use('/api/notifications', require('./routes/notification.routes'));
+app.use('/api/agora', require('./routes/agora.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -192,14 +183,7 @@ app.use((err, req, res, next) => {
     });
   }
   
-  // Handle MongoDB errors
-  if (err.code === 11000) { // Duplicate key error
-    const field = Object.keys(err.keyValue)[0];
-    return res.status(409).json({
-      success: false,
-      message: process.env.NODE_ENV === 'production' ? 'Resource already exists' : `${field} already exists`
-    });
-  }
+
 
   // Default error response
   const statusCode = err.statusCode || 500;
