@@ -73,51 +73,6 @@ const validateSchema = (schema, source = 'body') => {
 
 // Common validation schemas
 const schemas = {
-  // Email schema used for waitlist, contact forms, etc.
-  email: Joi.object({
-    email: Joi.string()
-      .email({ minDomainSegments: 2, tlds: { allow: true } })
-      .required()
-      .max(254)
-      .messages({
-        'string.email': 'Please provide a valid email address',
-        'string.empty': 'Email cannot be empty',
-        'any.required': 'Email is required',
-        'string.max': 'Email must be at most 254 characters long'
-      })
-  }),
-
-  // Contact message schema
-  contactMessage: Joi.object({
-    name: Joi.string()
-      .min(2)
-      .max(50)
-      .pattern(/^[a-zA-Z0-9\s\-'.]+$/)
-      .required()
-      .messages({
-        'string.min': 'Name must be at least 2 characters long',
-        'string.max': 'Name must be at most 50 characters long',
-        'string.pattern.base': 'Name can only contain letters, numbers, spaces, hyphens, apostrophes, and periods',
-        'any.required': 'Name is required'
-      }),
-    email: Joi.string()
-      .email({ minDomainSegments: 2, tlds: { allow: true } })
-      .required()
-      .max(254)
-      .messages({
-        'string.email': 'Please provide a valid email address',
-        'any.required': 'Email is required'
-      }),
-    message: Joi.string()
-      .min(10)
-      .max(2000)
-      .required()
-      .messages({
-        'string.min': 'Message must be at least 10 characters long',
-        'string.max': 'Message cannot exceed 2000 characters',
-        'any.required': 'Message is required'
-      })
-  }),
 
   // Welcome email schema
   welcomeEmail: Joi.object({
@@ -255,6 +210,33 @@ const schemas = {
       });
     }
     return value;
+  })
+  .unknown(true),
+
+  // Schema for generating Agora RTC tokens (for agora.routes.js)
+  generateAgoraTokenSchema: Joi.object({
+    uid: Joi.string()
+      .min(1)
+      .max(128)
+      .required()
+      .messages({
+        'string.empty': 'UID cannot be empty',
+        'string.min': 'UID must be at least 1 character long',
+        'string.max': 'UID must be at most 128 characters long',
+        'any.required': 'UID is required'
+      }),
+    channelId: Joi.string()
+      .min(1)
+      .max(64)
+      .pattern(/^[a-zA-Z0-9_-]+$/)
+      .required()
+      .messages({
+        'string.empty': 'Channel ID cannot be empty',
+        'string.min': 'Channel ID must be at least 1 character long',
+        'string.max': 'Channel ID must be at most 64 characters long',
+        'string.pattern.base': 'Channel ID can only contain letters, numbers, underscores, and hyphens',
+        'any.required': 'Channel ID is required'
+      })
   })
   .unknown(true)
 };

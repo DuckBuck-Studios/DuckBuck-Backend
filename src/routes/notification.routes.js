@@ -178,7 +178,7 @@ router.post(
   '/send-data-only',
   apiKeyAuth,  // Verify the API key
   firebaseAuthMiddleware,  // Verify Firebase authentication
-  highPriorityRateLimiter,  // Apply stricter rate limiting for high-priority notifications
+  highPriorityRateLimiter,  // Apply high-priority rate limiting
   validateSchema(schemas.sendDataOnlyNotificationSchema),  // Validate request body
   requestTrackingMiddleware,  // Add request tracking
   sendDataOnlyNotification,  // Controller function
