@@ -215,14 +215,15 @@ const schemas = {
 
   // Schema for generating Agora RTC tokens (for agora.routes.js)
   generateAgoraTokenSchema: Joi.object({
-    uid: Joi.string()
-      .min(1)
-      .max(128)
+    uid: Joi.alternatives()
+      .try(
+        Joi.string()
+          .min(1)
+          .max(128),
+        Joi.number()
+      )
       .required()
       .messages({
-        'string.empty': 'UID cannot be empty',
-        'string.min': 'UID must be at least 1 character long',
-        'string.max': 'UID must be at most 128 characters long',
         'any.required': 'UID is required'
       }),
     channelId: Joi.string()
