@@ -239,7 +239,31 @@ const schemas = {
         'any.required': 'Channel ID is required'
       })
   })
-  .unknown(true)
+  .unknown(true),
+
+  // Schema for generating VAPI JWT tokens (for ai-agent.routes.js)
+  generateVAPITokenSchema: Joi.object({
+    userId: Joi.string()
+      .min(1)
+      .max(128)
+      .optional()
+      .messages({
+        'string.min': 'User ID must be at least 1 character long',
+        'string.max': 'User ID must be at most 128 characters long'
+      })
+  })
+  .unknown(true),
+
+  // Schema for validating VAPI JWT tokens (for ai-agent.routes.js)
+  validateVAPITokenSchema: Joi.object({
+    token: Joi.string()
+      .required()
+      .messages({
+        'any.required': 'Token is required',
+        'string.empty': 'Token cannot be empty'
+      })
+  })
+  .unknown(false)
 };
 
 module.exports = {

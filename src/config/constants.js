@@ -47,10 +47,17 @@ const DEVELOPMENT_CONFIG = {
   ENABLE_RATE_LIMIT_IN_DEV: false  // Set to true to enable rate limiting in development
 };
 
+// VAPI AI Agent Configuration
+const VAPI_CONFIG = {
+  API_KEY: process.env.VAPI_API_KEY, 
+  ASSISTANT_ID: process.env.VAPI_ASSISTANT_ID
+};
+
 module.exports = {
   RATE_LIMITING,
   SECURITY_CONFIG,
   EMAIL_CONFIG,
   LOGGING_CONFIG,
-  DEVELOPMENT_CONFIG
+  DEVELOPMENT_CONFIG,
+  VAPI_CONFIG
 };
