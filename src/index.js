@@ -169,6 +169,7 @@ app.use('/api/health', require('./routes/health.routes'));
 app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/agora', require('./routes/agora.routes'));
+app.use('/api/ai-agent', require('./routes/ai-agent.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

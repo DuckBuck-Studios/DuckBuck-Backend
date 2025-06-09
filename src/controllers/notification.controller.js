@@ -117,9 +117,13 @@ exports.sendNotification = async (req, res, next) => {
     const fcmToken = await getFCMTokenForUser(userUid);
     
     if (!fcmToken) {
-      return res.status(404).json({
-        success: false,
-        message: 'FCM token not found for user'
+      const executionTime = Date.now() - startTime;
+      logger.info(`FCM token not found for user ${userUid}, returning success without sending notification in ${executionTime}ms`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Notification processed successfully',
+        note: 'FCM token not available for user'
       });
     }
 
@@ -221,9 +225,10 @@ exports.sendNotification = async (req, res, next) => {
     // Handle FCM specific errors
     if (error.code === 'messaging/registration-token-not-registered') {
       logger.warn(`FCM token invalid or unregistered for user: ${req.body.uid}`);
-      return res.status(410).json({
-        success: false,
-        message: 'FCM token is invalid or unregistered'
+      return res.status(200).json({
+        success: true,
+        message: 'Notification processed successfully',
+        note: 'FCM token is invalid or unregistered'
       });
     }
     
@@ -276,9 +281,13 @@ exports.sendDataOnlyNotification = async (req, res, next) => {
     const fcmToken = await getFCMTokenForUser(userUid);
     
     if (!fcmToken) {
-      return res.status(404).json({
-        success: false,
-        message: 'FCM token not found for user'
+      const executionTime = Date.now() - startTime;
+      logger.info(`FCM token not found for user ${userUid}, returning success without sending notification in ${executionTime}ms`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Notification processed successfully',
+        note: 'FCM token not available for user'
       });
     }
 
@@ -371,9 +380,10 @@ exports.sendDataOnlyNotification = async (req, res, next) => {
     // Handle FCM specific errors
     if (error.code === 'messaging/registration-token-not-registered') {
       logger.warn(`FCM token invalid or unregistered for user: ${req.body.uid}`);
-      return res.status(410).json({
-        success: false,
-        message: 'FCM token is invalid or unregistered'
+      return res.status(200).json({
+        success: true,
+        message: 'Notification processed successfully',
+        note: 'FCM token is invalid or unregistered'
       });
     }
     
