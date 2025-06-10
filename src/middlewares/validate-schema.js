@@ -263,7 +263,22 @@ const schemas = {
         'string.empty': 'Token cannot be empty'
       })
   })
-  .unknown(false)
+  .unknown(false),
+
+  // Schema for retrieving user documents (for user.routes.js)
+  retrieveDocumentsSchema: Joi.object({
+    uid: Joi.string()
+      .required()
+      .min(1)
+      .max(128)
+      .messages({
+        'any.required': 'User ID is required',
+        'string.empty': 'User ID cannot be empty',
+        'string.min': 'User ID must be at least 1 character long',
+        'string.max': 'User ID must be at most 128 characters long'
+      })
+  })
+  .unknown(true)
 };
 
 module.exports = {

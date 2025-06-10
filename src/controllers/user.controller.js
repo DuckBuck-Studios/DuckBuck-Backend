@@ -26,17 +26,28 @@ let duckbuckFirestoreClient = null;
 
 exports.retrieveDocuments = async (req, res) => {
   try {
-    // Extract collection name and optional query parameters from request
-    const { collectionName, limit = 10, orderBy, orderDirection = 'asc', startAfter } = req.body;
+    // Extract UID from request body
+    const { uid } = req.body;
     
-    // Validate input
-    if (!collectionName || typeof collectionName !== 'string' || collectionName.length > 100) {
-      logger.warn(`Invalid or missing collection name in retrieve documents request. IP: ${getClientIp(req)}`);
+    // Validate input (additional validation on top of schema validation)
+    if (!uid || typeof uid !== 'string' || uid.trim().length === 0) {
+      logger.warn(`Invalid or missing UID in retrieve documents request. IP: ${getClientIp(req)}`);
       return res.status(400).json({
         success: false,
-        message: 'Valid collection name is required'
+        message: 'Valid user ID is required'
       });
     }
+
+    // Security check: Ensure user can only access their own data (unless admin)
+    if (req.user && req.user.uid !== uid && !req.user.admin) {
+      logger.warn(`Unauthorized document access attempt: User ${req.user.uid} tried to access data for ${uid}. IP: ${getClientIp(req)}`);
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You can only access your own documents'
+      });
+    }
+
+    console.log('Retrieving documents for UID:', uid);
 
     // Parse service account credentials from environment variable
     let serviceAccount;
@@ -55,7 +66,7 @@ exports.retrieveDocuments = async (req, res) => {
 
     const projectId = serviceAccount.project_id;
 
-    // Initialize Firestore client (try duckbuck database first)
+    // Connect to duckbuck database specifically
     let firestore;
     try {
       firestore = getFirestoreClient(projectId, serviceAccount, 'duckbuck');
@@ -65,74 +76,63 @@ exports.retrieveDocuments = async (req, res) => {
       firestore = getFirestoreClient(projectId, serviceAccount);
     }
 
-    // Build the query
-    let query = firestore.collection(collectionName);
+    // Get user document from users collection
+    const userRef = firestore.collection('users').doc(uid);
+    const userDoc = await userRef.get();
 
-    // Apply optional ordering
-    if (orderBy && typeof orderBy === 'string' && orderBy.length <= 50) {
-      query = query.orderBy(orderBy, orderDirection === 'desc' ? 'desc' : 'asc');
-    }
-
-    // Apply pagination with startAfter
-    if (startAfter) {
-      try {
-        query = query.startAfter(startAfter);
-      } catch (error) {
-        logger.warn(`Invalid startAfter value in retrieve documents request: ${startAfter}. IP: ${getClientIp(req)}`);
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid startAfter value for pagination'
-        });
-      }
-    }
-
-    // Apply limit (ensure it's a number and cap at reasonable value)
-    const parsedLimit = parseInt(limit, 10);
-    const safeLimit = isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 100 ? 10 : parsedLimit;
-    query = query.limit(safeLimit);
-
-    // Execute query
-    const snapshot = await query.get();
-
-    // Process documents into JSON format
-    const documents = [];
-    snapshot.forEach(doc => {
-      documents.push({
-        id: doc.id,
-        data: doc.data(),
-        createdAt: doc.createTime ? doc.createTime.toDate().toISOString() : null,
-        updatedAt: doc.updateTime ? doc.updateTime.toDate().toISOString() : null
+    if (!userDoc.exists) {
+      logger.warn(`User document not found for UID: ${uid}. IP: ${getClientIp(req)}`);
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
       });
-    });
+    }
 
-    // Determine if there are more documents for pagination
-    const hasMore = snapshot.size === safeLimit;
+    const userData = userDoc.data();
+    
+    // Structure the response with user information
+    const userInfo = {
+      uid: uid,
+      profile: {
+        displayName: userData.displayName || null,
+        email: userData.email || null,
+        photoURL: userData.photoURL || null,
+        phoneNumber: userData.phoneNumber || null
+      },
+      accountInfo: {
+        isNewUser: userData.isNewUser || false,
+        lastLoginAt: userData.lastLoggedIn || null,
+        createdAt: userDoc.createTime ? userDoc.createTime.toDate().toISOString() : null,
+        updatedAt: userDoc.updateTime ? userDoc.updateTime.toDate().toISOString() : null
+      },
+      agentInfo: {
+        agent_remaining_time: userData.agent_remaining_time || 0
+      },
+      fcmTokenData: userData.fcmTokenData || null,
+      metadata: userData.metadata || null
+    };
 
     // Log success
-    logger.info(`Successfully retrieved ${documents.length} documents from ${collectionName}`, {
-      collection: collectionName,
-      limit: safeLimit,
-      ip: getClientIp(req)
+    logger.info(`Successfully retrieved user documents for UID: ${uid}`, {
+      uid: uid,
+      ip: getClientIp(req),
+      hasAgentTime: (userData.agent_remaining_time || 0) > 0
     });
 
     // Return response
     return res.status(200).json({
       success: true,
-      message: `Retrieved ${documents.length} documents from ${collectionName}`,
-      documents,
-      pagination: {
-        limit: safeLimit,
-        hasMore,
-        nextStartAfter: hasMore && documents.length > 0 ? documents[documents.length - 1].id : null
-      }
+      message: `User documents retrieved successfully`,
+      data: userInfo
     });
   } catch (error) {
-    logger.error(`Error retrieving documents: ${error.message}`, {
-      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    logger.error(`Error retrieving user documents: ${error.message}`, {
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
+      uid: req.body?.uid
     });
     return res.status(500).json({
       success: false,
-      message: 'Failed to retrieve documents',
+      message: 'Failed to retrieve user documents',
       ...(process.env.NODE_ENV !== 'production' && { error: error.message })
     });
   }

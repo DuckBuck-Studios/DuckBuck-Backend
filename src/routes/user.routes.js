@@ -10,8 +10,6 @@ const { validateSchema, schemas } = require('../middlewares/validate-schema');
 const { SECURITY_CONFIG, RATE_LIMITING, DEVELOPMENT_CONFIG } = require('../config/constants');
 const userController = require('../controllers/user.controller');
 
-router.get('/retrieve-all-documents', authMiddleware, userController.retrieveAllDocuments);
-
 // Constants for configurations
 const DEFAULT_USER_RATE_LIMIT = 10;             // 10 requests per hour
 const USER_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
@@ -255,6 +253,46 @@ router.post(
     // Log response time for monitoring
     if (responseTime > 1000) { // Only log slow requests
       logger.debug(`Request completed in ${responseTime}ms`, {
+        requestId: req.requestId,
+        path: req.originalUrl,
+        method: req.method,
+        responseTime
+      });
+    }
+    
+    next();
+  }
+);
+
+/**
+ * Retrieve all documents for a specific user
+ * POST /api/users/retrieve-documents
+ * Expects: { "uid": "user-firebase-uid" } in the request body
+ */
+router.post(
+  '/get-user-details',
+  userRateLimiter,
+  apiKeyAuth,  // Verify the API key
+  firebaseAuthMiddleware,  // Verify Firebase authentication
+  validateSchema(schemas.retrieveDocumentsSchema),  // Validate request body
+  (req, res, next) => {
+    // Add request tracking for monitoring response time
+    req.startTime = Date.now();
+    
+    // Add request ID for tracing through logs
+    req.requestId = req.headers['x-request-id'] || 
+                   `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    next();
+  },
+  userController.retrieveDocuments,
+  // Response time tracking middleware
+  (req, res, next) => {
+    const responseTime = Date.now() - req.startTime;
+    
+    // Log response time for monitoring
+    if (responseTime > 1000) { // Only log slow requests
+      logger.debug(`Document retrieval request completed in ${responseTime}ms`, {
         requestId: req.requestId,
         path: req.originalUrl,
         method: req.method,
