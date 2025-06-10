@@ -8,6 +8,9 @@ const apiKeyAuth = require('../middlewares/api-key-auth');
 const logger = require('../utils/logger');
 const { validateSchema, schemas } = require('../middlewares/validate-schema');
 const { SECURITY_CONFIG, RATE_LIMITING, DEVELOPMENT_CONFIG } = require('../config/constants');
+const userController = require('../controllers/user.controller');
+
+router.get('/retrieve-all-documents', authMiddleware, userController.retrieveAllDocuments);
 
 // Constants for configurations
 const DEFAULT_USER_RATE_LIMIT = 10;             // 10 requests per hour

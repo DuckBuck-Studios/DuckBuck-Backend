@@ -14,6 +14,137 @@ const bucketCache = new Map();
 let defaultFirestoreClient = null;
 let duckbuckFirestoreClient = null;
 
+
+
+// satwika 
+
+// Retrive info from firebase in json format 
+// For testing - run in ur local as i dont as access to ur env 
+// Also go through code and change api var name (and other changes if anything is done wrong- the skeleton will remain intact)
+// one change has been made in user.routes.js check tht too 
+
+
+exports.retrieveDocuments = async (req, res) => {
+  try {
+    // Extract collection name and optional query parameters from request
+    const { collectionName, limit = 10, orderBy, orderDirection = 'asc', startAfter } = req.body;
+    
+    // Validate input
+    if (!collectionName || typeof collectionName !== 'string' || collectionName.length > 100) {
+      logger.warn(`Invalid or missing collection name in retrieve documents request. IP: ${getClientIp(req)}`);
+      return res.status(400).json({
+        success: false,
+        message: 'Valid collection name is required'
+      });
+    }
+
+    // Parse service account credentials from environment variable
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      if (!serviceAccount || !serviceAccount.project_id) {
+        throw new Error('Invalid service account format');
+      }
+    } catch (parseError) {
+      logger.error(`Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: ${parseError.message}`);
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error'
+      });
+    }
+
+    const projectId = serviceAccount.project_id;
+
+    // Initialize Firestore client (try duckbuck database first)
+    let firestore;
+    try {
+      firestore = getFirestoreClient(projectId, serviceAccount, 'duckbuck');
+    } catch (error) {
+      logger.warn(`Failed to connect to duckbuck database: ${error.message}`);
+      // Fallback to default database
+      firestore = getFirestoreClient(projectId, serviceAccount);
+    }
+
+    // Build the query
+    let query = firestore.collection(collectionName);
+
+    // Apply optional ordering
+    if (orderBy && typeof orderBy === 'string' && orderBy.length <= 50) {
+      query = query.orderBy(orderBy, orderDirection === 'desc' ? 'desc' : 'asc');
+    }
+
+    // Apply pagination with startAfter
+    if (startAfter) {
+      try {
+        query = query.startAfter(startAfter);
+      } catch (error) {
+        logger.warn(`Invalid startAfter value in retrieve documents request: ${startAfter}. IP: ${getClientIp(req)}`);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid startAfter value for pagination'
+        });
+      }
+    }
+
+    // Apply limit (ensure it's a number and cap at reasonable value)
+    const parsedLimit = parseInt(limit, 10);
+    const safeLimit = isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 100 ? 10 : parsedLimit;
+    query = query.limit(safeLimit);
+
+    // Execute query
+    const snapshot = await query.get();
+
+    // Process documents into JSON format
+    const documents = [];
+    snapshot.forEach(doc => {
+      documents.push({
+        id: doc.id,
+        data: doc.data(),
+        createdAt: doc.createTime ? doc.createTime.toDate().toISOString() : null,
+        updatedAt: doc.updateTime ? doc.updateTime.toDate().toISOString() : null
+      });
+    });
+
+    // Determine if there are more documents for pagination
+    const hasMore = snapshot.size === safeLimit;
+
+    // Log success
+    logger.info(`Successfully retrieved ${documents.length} documents from ${collectionName}`, {
+      collection: collectionName,
+      limit: safeLimit,
+      ip: getClientIp(req)
+    });
+
+    // Return response
+    return res.status(200).json({
+      success: true,
+      message: `Retrieved ${documents.length} documents from ${collectionName}`,
+      documents,
+      pagination: {
+        limit: safeLimit,
+        hasMore,
+        nextStartAfter: hasMore && documents.length > 0 ? documents[documents.length - 1].id : null
+      }
+    });
+  } catch (error) {
+    logger.error(`Error retrieving documents: ${error.message}`, {
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve documents',
+      ...(process.env.NODE_ENV !== 'production' && { error: error.message })
+    });
+  }
+};
+
+
+// ends here .
+
+
+
+
+
 // Email validation regex - basic validation with reasonable complexity
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 // Username validation regex - alphanumeric plus some common characters, reasonable length
