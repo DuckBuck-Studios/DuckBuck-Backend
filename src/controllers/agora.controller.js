@@ -11,7 +11,7 @@ exports.generateAgoraToken = async (req, res, next) => {
   const startTime = Date.now();
   
   try {
-    const { uid, channelId } = req.body;
+    const { channelId } = req.body;
 
     // Note: Basic validation already handled by validateSchema middleware
 
@@ -46,7 +46,7 @@ exports.generateAgoraToken = async (req, res, next) => {
     const executionTime = Date.now() - startTime;
     const currentTimestamp = Date.now();
     
-    logger.info(`Agora token generated successfully for user ${uid} in ${executionTime}ms`, {
+    logger.info(`Agora token generated successfully for channel ${channelId} in ${executionTime}ms`, {
       channelId,
       agoraUid,
       executionTime,
@@ -69,7 +69,6 @@ exports.generateAgoraToken = async (req, res, next) => {
     
     logger.error(`Agora token generation failed after ${executionTime}ms: ${error.message}`, {
       stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
-      uid: req.body.uid,
       channelId: req.body.channelId
     });
     

@@ -91,10 +91,6 @@ app.use(express.json({ limit: '10kb' })); // Body parser with payload size limit
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(compression()); // Compress responses
 
-// Apply input sanitization to all requests
-const sanitizeInput = require('./middlewares/sanitize-input');
-app.use(sanitizeInput);
-
 // Setup CORS for Flutter applications
 app.use(cors({
   origin: '*', // Allow all origins for Flutter app requests
@@ -169,6 +165,7 @@ app.use('/api/health', require('./routes/health.routes'));
 app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/agora', require('./routes/agora.routes'));
+app.use('/api/ai-agent', require('./routes/ai-agent.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

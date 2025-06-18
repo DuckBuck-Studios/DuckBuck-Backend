@@ -215,17 +215,6 @@ const schemas = {
 
   // Schema for generating Agora RTC tokens (for agora.routes.js)
   generateAgoraTokenSchema: Joi.object({
-    uid: Joi.alternatives()
-      .try(
-        Joi.string()
-          .min(1)
-          .max(128),
-        Joi.number()
-      )
-      .required()
-      .messages({
-        'any.required': 'UID is required'
-      }),
     channelId: Joi.string()
       .min(1)
       .max(64)
@@ -237,6 +226,49 @@ const schemas = {
         'string.max': 'Channel ID must be at most 64 characters long',
         'string.pattern.base': 'Channel ID can only contain letters, numbers, underscores, and hyphens',
         'any.required': 'Channel ID is required'
+      })
+  })
+  .unknown(true),
+
+  // Schema for starting AI agent (for ai-agent.routes.js)
+  joinAiAgentSchema: Joi.object({
+    uid: Joi.alternatives()
+      .try(
+        Joi.string()
+          .min(1)
+          .max(128),
+        Joi.number()
+      )
+      .required()
+      .messages({
+        'any.required': 'UID is required'
+      }),
+    channelName: Joi.string()
+      .min(1)
+      .max(64)
+      .pattern(/^[a-zA-Z0-9_-]+$/)
+      .required()
+      .messages({
+        'string.empty': 'Channel name cannot be empty',
+        'string.min': 'Channel name must be at least 1 character long',
+        'string.max': 'Channel name must be at most 64 characters long',
+        'string.pattern.base': 'Channel name can only contain letters, numbers, underscores, and hyphens',
+        'any.required': 'Channel name is required'
+      })
+  })
+  .unknown(true),
+
+  // Schema for stopping AI agent (for ai-agent.routes.js)
+  stopAiAgentSchema: Joi.object({
+    agentId: Joi.string()
+      .min(1)
+      .max(256)
+      .required()
+      .messages({
+        'string.empty': 'Agent ID cannot be empty',
+        'string.min': 'Agent ID must be at least 1 character long',
+        'string.max': 'Agent ID must be at most 256 characters long',
+        'any.required': 'Agent ID is required'
       })
   })
   .unknown(true)

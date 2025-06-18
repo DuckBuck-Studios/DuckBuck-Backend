@@ -121,7 +121,7 @@ router.use(requestTimeout);
 /**
  * Generate Agora RTC token for video calling
  * POST /api/agora/generate-token
- * Expects: { "uid": "firebase-uid", "channelId": "channel-name" }
+ * Expects: { "channelId": "channel-name" }
  */
 router.post(
   '/generate-token',
