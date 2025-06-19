@@ -75,7 +75,7 @@ const AGORA_AI_CONFIG = {
     MODEL: 'gemini-2.0-flash-exp',
     MAX_HISTORY: 16,
     GREETING_MESSAGE: 'Hi! I am DuckBuck AI. How can I help you?',
-    FAILURE_MESSAGE: 'I apologize, but something went wrong. Please try again. / क्षमा करें, कुछ गलत हो गया। कृपया फिर से कोशिश करें।',
+    FAILURE_MESSAGE: 'I apologize, but something went wrong. Please try again.',
     SYSTEM_MESSAGE: getSystemPrompt()
   },
   
